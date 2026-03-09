@@ -1,0 +1,255 @@
+<div class="create-page">
+
+  <!-- ── CONFETTI ──────────────────────────────────────────────────────────── -->
+  <div class="confetti-wrap" *ngIf="success">
+    <div class="confetti-piece"
+         *ngFor="let c of confetti"
+         [ngStyle]="{
+           left: c.left + '%',
+           background: c.color,
+           width: c.width + 'px',
+           height: c.height + 'px',
+           animationDelay: c.delay + 's',
+           animationDuration: c.duration + 's',
+           transform: 'rotate(' + c.rotate + 'deg)'
+         }">
+    </div>
+  </div>
+
+  <!-- ── SUCCESS ────────────────────────────────────────────────────────────── -->
+  <div class="success-overlay" *ngIf="success">
+    <div class="success-box">
+      <span class="success-box__rocket">🚀</span>
+      <h2 class="success-box__title">Activité publiée !</h2>
+      <div class="success-box__xp">⚡ +15 XP débloqué</div>
+      <p class="success-box__sub">
+        Les joueurs autour de <strong>{{ selectedCity }}</strong> vont être notifiés 🔔
+      </p>
+      <div class="success-box__actions">
+        <button class="btn-action btn-action--primary" (click)="viewActivity()">
+          Voir mon activité
+        </button>
+        <button class="btn-action btn-action--ghost" (click)="goToActivities()">
+          Retour aux activités
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WIZARD ─────────────────────────────────────────────────────────────── -->
+  <div class="wizard" *ngIf="!success">
+
+    <!-- Header -->
+    <div class="wizard__header">
+      <button class="back-btn" (click)="goBack()" type="button">
+        <span class="back-btn__arrow">←</span>
+        <span>{{ step === 1 ? 'Activités' : 'Retour' }}</span>
+      </button>
+
+      <div class="progress-wrap">
+        <div class="progress-bar">
+          <div class="progress-bar__fill" [style.width.%]="progressPct"></div>
+        </div>
+        <span class="progress-label">{{ step }}/3</span>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ STEP 1 — Sport & Niveau ═══════════════════════ -->
+    <div class="step" *ngIf="step === 1">
+
+      <div class="step__hero">
+        <div class="step__num">01</div>
+        <h2>Quel sport aujourd'hui ?</h2>
+        <p>Sélectionne ton sport et ton niveau pour trouver les bons adversaires</p>
+      </div>
+
+      <!-- Sports grid -->
+      <div class="sports-grid">
+        <button
+          *ngFor="let s of sports"
+          class="sport-card"
+          [class.sport-card--active]="sport === s.id"
+          (click)="selectSport(s.id)"
+          type="button"
+          [attr.aria-label]="s.label">
+          <span class="sport-card__emoji">{{ s.emoji }}</span>
+          <span class="sport-card__label">{{ s.label }}</span>
+          <span class="sport-card__check" *ngIf="sport === s.id">✓</span>
+        </button>
+      </div>
+
+      <!-- FOMO banner -->
+      <div class="fomo-banner">
+        <span class="fomo-dot"></span>
+        <span>{{ fomoMessage }}</span>
+      </div>
+
+      <!-- Level pills -->
+      <div class="level-section">
+        <p class="section-label">Ton niveau de jeu</p>
+        <div class="level-grid">
+          <button
+            *ngFor="let l of levels"
+            class="level-card"
+            [class.level-card--active]="level === l.id"
+            (click)="level = l.id"
+            type="button">
+            <span class="level-card__name">{{ l.label }}</span>
+            <span class="level-card__desc">{{ l.desc }}</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-next" (click)="goNext()" [disabled]="!canNext1" type="button">
+        Continuer <span class="btn-next__arrow">→</span>
+      </button>
+    </div>
+
+    <!-- ═══════════════════════ STEP 2 — Lieu & Moment ════════════════════════ -->
+    <div class="step" *ngIf="step === 2">
+
+      <div class="step__hero">
+        <div class="step__num">02</div>
+        <h2>Où et quand ?</h2>
+        <p>Définis le lieu et l'horaire de ta session</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">🏙️ Ville</label>
+          <select class="form-input" [(ngModel)]="selectedCity" (change)="onCityChange()">
+            <option *ngFor="let c of cities" [value]="c.name">
+              {{ c.name }} — {{ c.country }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">📍 Lieu / Terrain</label>
+          <input class="form-input" type="text" [(ngModel)]="venueName"
+                 placeholder="Terrain municipal, Gymnase Sidi…" />
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">📅 Date</label>
+          <input class="form-input" type="date" [(ngModel)]="date" [min]="minDate" />
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">🕐 Heure</label>
+          <input class="form-input" type="time" [(ngModel)]="time" (change)="onTimeChange()" />
+        </div>
+      </div>
+
+      <!-- Participants stepper -->
+      <div class="participants-block">
+        <p class="section-label">Nombre maximum de joueurs</p>
+        <div class="stepper">
+          <button class="stepper__btn" (click)="dec()" [disabled]="maxParticipants <= 2" type="button">−</button>
+          <span class="stepper__val">{{ maxParticipants }}</span>
+          <button class="stepper__btn" (click)="inc()" [disabled]="maxParticipants >= 50" type="button">+</button>
+          <span class="stepper__unit">joueurs max</span>
+        </div>
+
+        <!-- Visual spots indicator -->
+        <div class="spots">
+          <div class="spots__dot"
+               *ngFor="let d of spotsArray; let i = index"
+               [class.spots__dot--you]="i === 0"
+               [title]="i === 0 ? 'Toi (organisateur)' : 'Spot libre'">
+          </div>
+          <span class="spots__overflow" *ngIf="maxParticipants > 12">
+            +{{ maxParticipants - 12 }} spots
+          </span>
+        </div>
+        <p class="spots__hint">🎙️ Tu es automatiquement organisateur de la session</p>
+      </div>
+
+      <!-- Insight / urgency trigger -->
+      <div class="insight-box">
+        <span class="insight-box__icon">💡</span>
+        <p>Les sessions du <strong>week-end soir</strong> affichent complet en <strong>18 min</strong> en moyenne — crée maintenant !</p>
+      </div>
+
+      <div class="wizard__nav">
+        <button class="btn-back" (click)="goBack()" type="button">← Retour</button>
+        <button class="btn-next" style="flex:1" (click)="goNext()" [disabled]="!canNext2" type="button">
+          Aperçu final <span class="btn-next__arrow">→</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ STEP 3 — Détails + Preview ════════════════════ -->
+    <div class="step step--split" *ngIf="step === 3">
+
+      <div class="step__hero">
+        <div class="step__num">03</div>
+        <h2>Finalise ton annonce</h2>
+        <p>Voici comment ta session apparaîtra à la communauté Momentum</p>
+      </div>
+
+      <div class="split-content">
+
+        <!-- LEFT: Édition -->
+        <div class="split-form">
+          <div class="form-field">
+            <label class="form-label">✏️ Titre de la session</label>
+            <input class="form-input" type="text" [(ngModel)]="title"
+                   (input)="onTitleInput()"
+                   placeholder="Football Soir — Casablanca"
+                   maxlength="60" />
+            <div class="char-count">{{ title.length }}/60</div>
+          </div>
+
+          <div class="form-field" style="margin-top: 1.25rem">
+            <label class="form-label">
+              📝 Description
+              <span class="label-optional">(optionnel)</span>
+            </label>
+            <textarea class="form-input form-textarea" [(ngModel)]="description"
+                      placeholder="Bon niveau requis, équipement conseillé 🎽&#10;Rendez-vous au parking à -15min…"
+                      maxlength="500">
+            </textarea>
+            <div class="char-count">{{ description.length }}/500</div>
+          </div>
+
+          <div class="error-msg" *ngIf="error">⚠️ {{ error }}</div>
+        </div>
+
+        <!-- RIGHT: Live preview -->
+        <div class="preview-panel">
+          <p class="preview-panel__label">👁️ Aperçu en direct</p>
+
+          <div class="preview-card">
+            <div class="preview-card__top">
+              <span class="preview-card__emoji">{{ sportEmoji }}</span>
+              <span class="preview-card__badge">OUVERT</span>
+            </div>
+            <h4 class="preview-card__title">{{ title || 'Titre de ta session…' }}</h4>
+            <p class="preview-card__meta">📍 {{ venueName || 'Lieu à définir' }}, {{ selectedCity }}</p>
+            <p class="preview-card__meta">📅 {{ previewDate }}</p>
+            <hr class="preview-card__divider" />
+            <div class="preview-card__footer">
+              <span class="preview-card__level">{{ levelLabel }}</span>
+              <span class="preview-card__spots">1/{{ maxParticipants }} joueurs</span>
+            </div>
+          </div>
+
+          <p class="preview-panel__hint">
+            ✨ Visible par tous les joueurs de {{ selectedCity }}
+          </p>
+        </div>
+      </div>
+
+      <div class="wizard__nav" style="margin-top: 2rem">
+        <button class="btn-back" (click)="goBack()" type="button">← Retour</button>
+        <button class="btn-submit" style="flex:1" (click)="submit()"
+                [disabled]="!canSubmit" type="button">
+          <span *ngIf="!submitting">🚀 Publier mon activité</span>
+          <span *ngIf="submitting" class="btn-submit__spinner">⏳ Publication…</span>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /wizard -->
+</div>
