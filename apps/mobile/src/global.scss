@@ -1,0 +1,14 @@
+@import '~@ionic/angular/css/core.css';
+@import '~@ionic/angular/css/normalize.css';
+@import '~@ionic/angular/css/structure.css';
+@import '~@ionic/angular/css/typography.css';
+@import './theme/variables.scss';
+
+// Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+// Override Ionic typography
+* { font-family: 'Inter', var(--ion-font-family); }
+h1, h2, h3, h4, h5, h6 { font-family: 'Poppins', var(--ion-font-family); }
+
+ion-card { border-radius: 16px; box-shadow: 0 4px 16px rgba(13,27,75,0.10); }

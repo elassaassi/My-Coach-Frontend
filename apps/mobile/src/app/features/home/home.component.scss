@@ -1,0 +1,43 @@
+.toolbar-brand {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Poppins', sans-serif; font-weight: 700;
+}
+
+.toolbar-logo {
+  width: 28px; height: 28px;
+  background: #FF3A00; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.875rem; color: #fff; font-weight: 700;
+}
+
+.section { padding: 16px 16px 0; }
+
+.section-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem; font-weight: 700;
+  color: #0D1B4B;
+  margin-bottom: 12px;
+}
+
+.highlight-card {
+  border-radius: 16px !important;
+  overflow: hidden;
+  &__media {
+    background: linear-gradient(135deg, #0D1B4B, #FF3A00);
+    height: 140px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1rem; padding: 16px;
+    text-align: center;
+  }
+}
+
+.activity-card {
+  border-radius: 12px !important;
+  --background: #fff;
+  margin-bottom: 8px;
+}
+
+ion-toolbar[color="secondary"] {
+  --background: #0D1B4B;
+  --color: #fff;
+}

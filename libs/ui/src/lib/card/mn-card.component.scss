@@ -1,0 +1,26 @@
+.mn-card {
+  background: var(--clr-surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--clr-border);
+  overflow: hidden;
+  transition: box-shadow var(--transition-base);
+
+  &--elevated { box-shadow: var(--shadow-md); border-color: transparent; }
+  &--clickable {
+    cursor: pointer;
+    &:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+  }
+
+  &__header {
+    padding: var(--space-4) var(--space-6);
+    border-bottom: 1px solid var(--clr-border-light);
+    font-family: var(--font-heading);
+    font-weight: var(--fw-semibold);
+    font-size: var(--text-lg);
+    color: var(--clr-text-primary);
+  }
+
+  &__body {
+    padding: var(--space-6);
+  }
+}

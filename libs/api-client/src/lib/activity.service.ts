@@ -1,0 +1,39 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { Activity, ActivitySearchParams, CreateActivityRequest } from '@momentum/models';
+
+@Injectable({ providedIn: 'root' })
+export class ActivityService {
+  private readonly http = inject(HttpClient);
+  private readonly BASE = '/api/v1/activities';
+
+  create(req: CreateActivityRequest): Observable<Activity> {
+    return this.http.post<Activity>(this.BASE, req);
+  }
+
+  search(params?: ActivitySearchParams): Observable<Activity[]> {
+    let httpParams = new HttpParams();
+    if (params?.sport)   httpParams = httpParams.set('sport', params.sport);
+    if (params?.city)    httpParams = httpParams.set('city', params.city);
+    if (params?.status)  httpParams = httpParams.set('status', params.status);
+    if (params?.page)    httpParams = httpParams.set('page', params.page.toString());
+    return this.http.get<Activity[]>(`${this.BASE}/search`, { params: httpParams });
+  }
+
+  getById(id: string): Observable<Activity> {
+    return this.http.get<Activity>(`${this.BASE}/${id}`);
+  }
+
+  getMyActivities(): Observable<Activity[]> {
+    return this.http.get<Activity[]>(`${this.BASE}/me`);
+  }
+
+  join(id: string): Observable<void> {
+    return this.http.post<void>(`${this.BASE}/${id}/join`, {});
+  }
+
+  leave(id: string): Observable<void> {
+    return this.http.post<void>(`${this.BASE}/${id}/leave`, {});
+  }
+}

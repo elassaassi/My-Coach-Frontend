@@ -1,0 +1,11 @@
+ion-tab-bar {
+  --background: var(--clr-surface, #fff);
+  --border: 1px solid var(--clr-border, #E5E7EB);
+  --color: var(--clr-text-muted, #9CA3AF);
+  --color-selected: var(--clr-primary, #FF3A00);
+}
+
+.tab-create ion-icon {
+  font-size: 2rem;
+  color: var(--clr-primary, #FF3A00);
+}

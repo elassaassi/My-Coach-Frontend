@@ -1,0 +1,101 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+// ── Sidebar ──────────────────────────────────────────────────────────────
+.sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: var(--clr-secondary);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6) 0;
+  position: fixed;
+  top: 0; left: 0;
+  z-index: var(--z-raised);
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0 var(--space-6) var(--space-6);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  &__logo {
+    width: 40px; height: 40px;
+    background: var(--clr-primary);
+    border-radius: var(--radius-lg);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-heading);
+    font-weight: var(--fw-bold);
+    font-size: var(--text-xl);
+    color: #fff;
+  }
+
+  &__name {
+    font-family: var(--font-heading);
+    font-weight: var(--fw-bold);
+    font-size: var(--text-lg);
+    color: #fff;
+  }
+
+  &__nav {
+    flex: 1;
+    list-style: none;
+    padding: var(--space-4) 0;
+    overflow-y: auto;
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-6);
+    color: rgba(255,255,255,0.7);
+    font-size: var(--text-sm);
+    font-weight: var(--fw-medium);
+    transition: all var(--transition-fast);
+    border-left: 3px solid transparent;
+    text-decoration: none;
+
+    &:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+    }
+
+    &.active {
+      background: rgba(255, 58, 0, 0.2);
+      color: #fff;
+      border-left-color: var(--clr-primary);
+    }
+  }
+
+  &__icon { font-size: var(--text-lg); }
+  &__label { font-family: var(--font-body); }
+
+  &__logout {
+    margin: 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius-lg);
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    display: flex; align-items: center; gap: var(--space-2);
+    font-size: var(--text-sm);
+    transition: all var(--transition-fast);
+
+    &:hover { background: rgba(239,68,68,0.2); color: #fff; }
+  }
+}
+
+// ── Main content ─────────────────────────────────────────────────────────
+.main-content {
+  flex: 1;
+  margin-left: 240px;
+  min-height: 100vh;
+  background: var(--clr-background);
+  overflow-y: auto;
+}
