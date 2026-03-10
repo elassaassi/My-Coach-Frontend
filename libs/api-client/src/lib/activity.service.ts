@@ -14,10 +14,11 @@ export class ActivityService {
 
   search(params?: ActivitySearchParams): Observable<Activity[]> {
     let httpParams = new HttpParams();
-    if (params?.sport)   httpParams = httpParams.set('sport', params.sport);
-    if (params?.city)    httpParams = httpParams.set('city', params.city);
+    if (params?.sport)   httpParams = httpParams.set('sport',  params.sport);
+    if (params?.city)    httpParams = httpParams.set('city',   params.city);
     if (params?.status)  httpParams = httpParams.set('status', params.status);
-    if (params?.page)    httpParams = httpParams.set('page', params.page.toString());
+    if (params?.page  != null) httpParams = httpParams.set('page', params.page.toString());
+    if (params?.size  != null) httpParams = httpParams.set('size', params.size.toString());
     return this.http.get<Activity[]>(`${this.BASE}/search`, { params: httpParams });
   }
 
@@ -34,6 +35,6 @@ export class ActivityService {
   }
 
   leave(id: string): Observable<void> {
-    return this.http.post<void>(`${this.BASE}/${id}/leave`, {});
+    return this.http.delete<void>(`${this.BASE}/${id}/leave`);
   }
 }

@@ -1,0 +1,163 @@
+<!-- Loading skeleton -->
+<div *ngIf="loading" class="detail-wrap">
+  <div class="skeleton skeleton--hero"></div>
+  <div class="skeleton skeleton--line" style="width:60%;margin-top:1.5rem"></div>
+  <div class="skeleton skeleton--line" style="width:40%;margin-top:.75rem"></div>
+</div>
+
+<!-- Error state -->
+<div *ngIf="error && !loading" class="detail-wrap">
+  <div class="error-state">
+    <span class="error-state__emoji">😢</span>
+    <h3>Session introuvable</h3>
+    <p>Cette activité n'existe pas ou a été supprimée.</p>
+    <a routerLink="/activities" class="btn btn--primary">Voir les activités</a>
+  </div>
+</div>
+
+<!-- Success flash -->
+<div *ngIf="joinSuccess" class="join-toast" aria-live="polite">
+  🎉 Tu rejoins la session — à très vite sur le terrain
+</div>
+
+<!-- Main content -->
+<div *ngIf="activity && !loading && !error" class="detail-wrap">
+
+  <!-- Back -->
+  <a routerLink="/activities" class="back-link">← Retour</a>
+
+  <!-- Hero card -->
+  <div class="hero">
+    <div class="hero__sport-bubble">{{ sportMeta(activity.sport).emoji }}</div>
+
+    <div class="hero__body">
+      <div class="hero__meta">
+        <mn-badge [color]="statusColor">{{ statusLabel }}</mn-badge>
+        <span class="hero__level-tag">{{ levelLabel }}</span>
+      </div>
+
+      <h1 class="hero__title">{{ activity.title }}</h1>
+
+      <p *ngIf="activity.description" class="hero__description">{{ activity.description }}</p>
+
+      <!-- Info row -->
+      <div class="info-row">
+        <div class="info-item">
+          <span class="info-item__icon">📅</span>
+          <span class="info-item__text">{{ activity.scheduledAt | date:'EEEE dd MMMM yyyy' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-item__icon">🕐</span>
+          <span class="info-item__text">{{ activity.scheduledAt | date:'HH:mm' }}</span>
+        </div>
+        <div class="info-item info-item--clickable" (click)="openMaps()">
+          <span class="info-item__icon">📍</span>
+          <span class="info-item__text">
+            {{ activity.location.venueName || activity.location.city }},&nbsp;{{ activity.location.city }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Countdown + spots -->
+  <div class="urgency-strip">
+    <div class="urgency-strip__countdown">
+      <span class="urgency-strip__label">Commence dans</span>
+      <span class="urgency-strip__value">{{ countdown }}</span>
+    </div>
+
+    <div class="urgency-strip__spots" [class.urgency-strip__spots--urgent]="spotsUrgent" [class.urgency-strip__spots--full]="isFull">
+      <span *ngIf="!isFull">
+        <strong>{{ spotsLeft }}</strong> place{{ spotsLeft > 1 ? 's' : '' }} restante{{ spotsLeft > 1 ? 's' : '' }}
+        <span *ngIf="spotsUrgent" class="urgency-strip__fire">🔥</span>
+      </span>
+      <span *ngIf="isFull">Session complète</span>
+    </div>
+
+    <!-- Spots progress bar -->
+    <div class="spots-bar">
+      <div class="spots-bar__fill"
+           [style.width.%]="(activity.currentParticipantsCount / activity.maxParticipants) * 100"
+           [class.spots-bar__fill--urgent]="spotsUrgent"
+           [class.spots-bar__fill--full]="isFull">
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA section -->
+  <div class="cta-section">
+
+    <!-- Organizer view -->
+    <div *ngIf="isOrganizer" class="organizer-badge">
+      👑 Tu organises cette session
+    </div>
+
+    <!-- Participant: leave -->
+    <div *ngIf="!isOrganizer && isParticipant" class="joined-state">
+      <div class="joined-state__check">✓ Tu participes</div>
+      <button class="btn btn--ghost btn--sm" (click)="leave()" [disabled]="joining">
+        {{ joining ? '...' : 'Quitter la session' }}
+      </button>
+    </div>
+
+    <!-- Not joined -->
+    <ng-container *ngIf="!isOrganizer && !isParticipant">
+      <button *ngIf="!isFull && activity.status === 'OPEN'"
+              class="btn btn--primary btn--lg btn--pulse"
+              (click)="join()"
+              [disabled]="joining">
+        {{ joining ? 'Inscription...' : 'Rejoindre la session' }}
+      </button>
+
+      <div *ngIf="isFull" class="full-notice">
+        Session complète — active les notifications pour être prévenu si une place se libère.
+      </div>
+
+      <div *ngIf="activity.status !== 'OPEN' && activity.status !== 'FULL'" class="full-notice">
+        Cette session n'est plus disponible.
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Participants -->
+  <div class="participants-section">
+    <h3 class="section-title">
+      Participants
+      <span class="section-title__count">{{ activity.currentParticipantsCount }}/{{ activity.maxParticipants }}</span>
+    </h3>
+
+    <div class="participants-grid">
+      <div *ngFor="let p of activity.participants; let i = index"
+           class="participant-chip"
+           [class.participant-chip--organizer]="p.userId === activity.organizerId"
+           [title]="p.userId === activity.organizerId ? 'Organisateur' : 'Participant'">
+        <div class="participant-chip__avatar"
+             [style.background]="'hsl(' + avatarHue(p.userId) + ',65%,50%)'">
+          {{ participantInitial(p.userId) }}
+        </div>
+        <div class="participant-chip__info">
+          <span class="participant-chip__name">
+            Joueur {{ i + 1 }}
+            <span *ngIf="p.userId === activity.organizerId" class="participant-chip__crown">👑</span>
+          </span>
+          <span class="participant-chip__joined">Inscrit {{ p.joinedAt | date:'dd/MM' }}</span>
+        </div>
+      </div>
+
+      <!-- Empty slots -->
+      <div *ngFor="let _ of [].constructor(spotsLeft > 0 ? spotsLeft : 0); let i = index"
+           class="participant-chip participant-chip--empty">
+        <div class="participant-chip__avatar participant-chip__avatar--empty">+</div>
+        <span class="participant-chip__name participant-chip__name--empty">Place libre</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Social proof -->
+  <div class="social-proof">
+    <span class="social-proof__icon">🔥</span>
+    Les sessions {{ sportMeta(activity.sport).label }} dans {{ activity.location.city }} affichent complet en moyenne en <strong>18 min</strong>.
+  </div>
+
+</div>
