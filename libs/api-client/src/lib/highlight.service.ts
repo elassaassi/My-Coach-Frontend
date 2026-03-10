@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Highlight, PublishHighlightRequest } from '@momentum/models';
 
 @Injectable({ providedIn: 'root' })
@@ -10,6 +11,14 @@ export class HighlightService {
 
   publish(req: PublishHighlightRequest): Observable<Highlight> {
     return this.http.post<Highlight>(this.BASE, req);
+  }
+
+  uploadFile(file: File): Observable<string> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<{ url: string }>(`${this.BASE}/upload`, form).pipe(
+      map(res => res.url)
+    );
   }
 
   getHighlightOfDay(): Observable<Highlight> {

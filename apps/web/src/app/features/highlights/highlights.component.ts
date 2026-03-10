@@ -45,6 +45,11 @@ export class HighlightsComponent implements OnInit {
   publishing      = false;
   publishError    = '';
 
+  // Upload state
+  selectedFile: File | null = null;
+  previewUrl: string | null = null;
+  dragOver = false;
+
   readonly allSports = Object.entries(SPORT_META).map(([id, m]) => ({ id, ...m }));
 
   get currentUserId(): string | null { return this.authService.currentUserId; }
@@ -89,20 +94,89 @@ export class HighlightsComponent implements OnInit {
   // ── Publish modal ──────────────────────────────────────────────────────────
 
   openModal(): void {
-    this.modalOpen      = true;
-    this.publishError   = '';
+    this.modalOpen       = true;
+    this.publishError    = '';
     this.publishMediaUrl = '';
-    this.publishCaption = '';
-    this.publishSport   = 'football';
-    this.publishType    = 'PHOTO';
+    this.publishCaption  = '';
+    this.publishSport    = 'football';
+    this.publishType     = 'PHOTO';
+    this.selectedFile    = null;
+    this.previewUrl      = null;
+    this.dragOver        = false;
   }
 
   closeModal(): void { this.modalOpen = false; }
 
+  // ── File upload ────────────────────────────────────────────────────────────
+
+  onFileSelect(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.[0]) this.handleFile(input.files[0]);
+    input.value = '';   // reset input so same file can be re-selected
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragOver = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.handleFile(file);
+  }
+
+  handleFile(file: File): void {
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      this.publishError = 'Seules les images et vidéos sont acceptées.';
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      this.publishError = 'Fichier trop volumineux (max 50 Mo).';
+      return;
+    }
+    this.publishError    = '';
+    this.selectedFile    = file;
+    this.publishMediaUrl = '';
+    this.publishType     = file.type.startsWith('video/') ? 'VIDEO' : 'PHOTO';
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => this.previewUrl = e.target?.result as string;
+      reader.readAsDataURL(file);
+    } else {
+      this.previewUrl = null;
+    }
+  }
+
+  removeFile(): void {
+    this.selectedFile    = null;
+    this.previewUrl      = null;
+    this.publishMediaUrl = '';
+    this.publishError    = '';
+  }
+
+  get canPublish(): boolean {
+    return !this.publishing && !!this.publishCaption.trim() &&
+           (!!this.selectedFile || !!this.publishMediaUrl.trim());
+  }
+
+  // ── Publish ────────────────────────────────────────────────────────────────
+
   publish(): void {
-    if (!this.publishMediaUrl.trim() || !this.publishCaption.trim() || this.publishing) return;
+    if (!this.canPublish) return;
     this.publishError = '';
     this.publishing   = true;
+
+    if (this.selectedFile) {
+      this.highlightService.uploadFile(this.selectedFile).subscribe({
+        next: (url) => { this.publishMediaUrl = url; this.doPublish(); },
+        error: (err) => {
+          this.publishing   = false;
+          this.publishError = err?.error?.error ?? 'Erreur lors de l\'upload.';
+        },
+      });
+    } else {
+      this.doPublish();
+    }
+  }
+
+  private doPublish(): void {
     this.highlightService.publish({
       mediaUrl:  this.publishMediaUrl.trim(),
       mediaType: this.publishType,
@@ -115,7 +189,7 @@ export class HighlightsComponent implements OnInit {
         this.load();
       },
       error: (err) => {
-        this.publishing  = false;
+        this.publishing   = false;
         this.publishError = err?.error?.error ?? 'Erreur lors de la publication.';
       },
     });

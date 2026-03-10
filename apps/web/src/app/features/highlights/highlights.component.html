@@ -121,8 +121,57 @@
     </div>
 
     <div class="modal__body">
-      <!-- Type -->
+
+      <!-- ── Upload zone ─────────────────────────────────────────────────── -->
       <div class="form-group">
+        <label class="form-label">Média</label>
+
+        <!-- Drop zone -->
+        <div class="upload-zone"
+             [class.upload-zone--drag]="dragOver"
+             [class.upload-zone--filled]="selectedFile || previewUrl"
+             (click)="!selectedFile ? fileInput.click() : null"
+             (dragover)="$event.preventDefault(); dragOver = true"
+             (dragleave)="dragOver = false"
+             (drop)="onDrop($event)">
+
+          <!-- Image preview -->
+          <img *ngIf="previewUrl" [src]="previewUrl" class="upload-preview" alt="preview">
+
+          <!-- Video selected (no preview) -->
+          <div *ngIf="selectedFile && !previewUrl" class="upload-video-info">
+            <span>🎬</span>
+            <span>{{ selectedFile.name }}</span>
+          </div>
+
+          <!-- Empty placeholder -->
+          <div *ngIf="!selectedFile" class="upload-placeholder">
+            <span class="upload-icon">📎</span>
+            <p>Glisser ici ou <b>cliquer pour choisir</b></p>
+            <span class="upload-hint">JPG · PNG · GIF · MP4 · MOV — max 50 Mo</span>
+          </div>
+
+          <!-- Remove button -->
+          <button *ngIf="selectedFile" class="upload-remove"
+                  (click)="$event.stopPropagation(); removeFile()"
+                  aria-label="Supprimer">✕</button>
+        </div>
+
+        <!-- Hidden file input -->
+        <input #fileInput type="file" accept="image/*,video/*"
+               style="display:none" (change)="onFileSelect($event)">
+      </div>
+
+      <!-- ── OR separator + URL manuelle ────────────────────────────────── -->
+      <div class="form-separator">ou entrer une URL</div>
+      <div class="form-group">
+        <input class="form-input" [(ngModel)]="publishMediaUrl"
+               [disabled]="!!selectedFile"
+               placeholder="https://..." type="text" />
+      </div>
+
+      <!-- ── Type toggle (URL uniquement) ───────────────────────────────── -->
+      <div *ngIf="!selectedFile && publishMediaUrl.trim()" class="form-group">
         <label class="form-label">Type de média</label>
         <div class="type-toggle">
           <button class="type-btn" [class.type-btn--active]="publishType === 'PHOTO'"
@@ -132,21 +181,14 @@
         </div>
       </div>
 
-      <!-- URL -->
-      <div class="form-group">
-        <label class="form-label">URL {{ publishType === 'PHOTO' ? 'de l\'image' : 'de la vidéo' }}</label>
-        <input class="form-input" [(ngModel)]="publishMediaUrl"
-               placeholder="https://..." type="text" />
-      </div>
-
-      <!-- Caption -->
+      <!-- ── Caption ─────────────────────────────────────────────────────── -->
       <div class="form-group">
         <label class="form-label">Légende</label>
         <textarea class="form-input form-input--textarea" [(ngModel)]="publishCaption"
                   placeholder="Décris ce moment..." rows="3" maxlength="500"></textarea>
       </div>
 
-      <!-- Sport -->
+      <!-- ── Sport ──────────────────────────────────────────────────────── -->
       <div class="form-group">
         <label class="form-label">Sport</label>
         <select class="form-input" [(ngModel)]="publishSport">
@@ -159,10 +201,8 @@
 
     <div class="modal__footer">
       <button class="btn btn--ghost" (click)="closeModal()">Annuler</button>
-      <button class="btn btn--primary"
-              [disabled]="!publishMediaUrl.trim() || !publishCaption.trim() || publishing"
-              (click)="publish()">
-        {{ publishing ? 'Publication...' : 'Publier' }}
+      <button class="btn btn--primary" [disabled]="!canPublish" (click)="publish()">
+        {{ publishing ? (selectedFile && !publishMediaUrl ? 'Upload...' : 'Publication...') : 'Publier' }}
       </button>
     </div>
   </div>
