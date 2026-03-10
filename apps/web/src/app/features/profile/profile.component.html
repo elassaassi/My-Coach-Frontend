@@ -13,13 +13,12 @@
   <!-- ── HERO ────────────────────────────────────────────────────────────── -->
   <div class="hero-card">
     <!-- Avatar -->
-    <div class="hero-card__avatar-wrap">
-      <div class="avatar-ring" [style.background]="'conic-gradient(hsl(' + avatarHue + ',65%,50%) 0%, transparent 0%)'">
-        <div class="avatar-inner" [style.background]="'hsl(' + avatarHue + ',65%,50%)'">
-          <span>{{ initials }}</span>
+    <div style="position:relative;flex-shrink:0">
+      <div class="avatar-ring">
+        <div class="avatar-inner" [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
+          {{ initials }}
         </div>
       </div>
-      <!-- Online dot -->
       <span class="avatar-online"></span>
     </div>
 
@@ -29,9 +28,9 @@
       <p class="hero-card__email">{{ user?.email }}</p>
       <div class="hero-card__meta">
         <span class="hero-card__since">📅 {{ memberSince }}</span>
-        <mn-badge *ngIf="user?.sportProfile?.city" color="info">
+        <span *ngIf="user?.sportProfile?.city" class="city-badge">
           📍 {{ user?.sportProfile?.city }}
-        </mn-badge>
+        </span>
       </div>
     </div>
 
