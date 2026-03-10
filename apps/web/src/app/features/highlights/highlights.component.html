@@ -135,23 +135,28 @@
              (dragleave)="dragOver = false"
              (drop)="onDrop($event)">
 
-          <!-- Image preview -->
+          <!-- Preview (image ou thumbnail vidéo) -->
           <img *ngIf="previewUrl" [src]="previewUrl" class="upload-preview" alt="preview">
 
-          <!-- Video selected (no preview) -->
+          <!-- Vidéo sélectionnée, thumbnail en cours de génération -->
           <div *ngIf="selectedFile && !previewUrl" class="upload-video-info">
             <span>🎬</span>
             <span>{{ selectedFile.name }}</span>
+            <span class="upload-hint">Génération du thumbnail…</span>
           </div>
 
-          <!-- Empty placeholder -->
+          <!-- Placeholder vide -->
           <div *ngIf="!selectedFile" class="upload-placeholder">
             <span class="upload-icon">📎</span>
             <p>Glisser ici ou <b>cliquer pour choisir</b></p>
             <span class="upload-hint">JPG · PNG · GIF · MP4 · MOV — max 50 Mo</span>
           </div>
 
-          <!-- Remove button -->
+          <!-- Badge vidéo sur le thumbnail -->
+          <span *ngIf="selectedFile && publishType === 'VIDEO' && previewUrl"
+                class="upload-video-badge">🎬</span>
+
+          <!-- Bouton supprimer -->
           <button *ngIf="selectedFile" class="upload-remove"
                   (click)="$event.stopPropagation(); removeFile()"
                   aria-label="Supprimer">✕</button>

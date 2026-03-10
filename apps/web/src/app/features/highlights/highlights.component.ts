@@ -135,13 +135,38 @@ export class HighlightsComponent implements OnInit {
     this.selectedFile    = file;
     this.publishMediaUrl = '';
     this.publishType     = file.type.startsWith('video/') ? 'VIDEO' : 'PHOTO';
+    this.previewUrl      = null;
+
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => this.previewUrl = e.target?.result as string;
       reader.readAsDataURL(file);
     } else {
-      this.previewUrl = null;
+      this.generateVideoThumbnail(file);
     }
+  }
+
+  private generateVideoThumbnail(file: File): void {
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted   = true;
+    video.playsInline = true;
+
+    video.addEventListener('loadedmetadata', () => {
+      video.currentTime = Math.min(0.5, video.duration / 2);
+    }, { once: true });
+
+    video.addEventListener('seeked', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = video.videoWidth  || 320;
+      canvas.height = video.videoHeight || 180;
+      canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      this.previewUrl = canvas.toDataURL('image/jpeg', 0.85);
+      URL.revokeObjectURL(objectUrl);
+    }, { once: true });
+
+    video.src = objectUrl;
   }
 
   removeFile(): void {

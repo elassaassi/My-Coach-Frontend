@@ -539,6 +539,15 @@ $gold:   #F5C400;
   span:first-child { font-size: 2.5rem; }
 }
 
+.upload-video-badge {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  font-size: 1.4rem;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,.6));
+  pointer-events: none;
+}
+
 .upload-remove {
   position: absolute;
   top: var(--space-2);
