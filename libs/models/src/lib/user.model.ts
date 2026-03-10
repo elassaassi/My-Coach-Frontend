@@ -4,24 +4,33 @@ export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'DELETED';
 export type Proficiency = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ELITE';
 export type SportName = 'football' | 'basketball' | 'tennis' | 'padel' | 'running' | string;
 
-// ── Value objects ──────────────────────────────────────────────────────────
+// ── Nested DTOs (matches backend UserResult) ───────────────────────────────
 
-export interface SportProfile {
+export interface SportLevelDto {
   sport: SportName;
   proficiency: Proficiency;
-  yearsOfExperience: number;
+  yearsExperience: number;
 }
 
-// ── Aggregate ──────────────────────────────────────────────────────────────
+export interface SportProfileDto {
+  sports: SportLevelDto[];
+  latitude: number;
+  longitude: number;
+  city: string;
+  country: string;
+}
+
+// ── User aggregate (matches backend UserResult) ────────────────────────────
 
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   status: UserStatus;
-  sportProfiles: SportProfile[];
-  createdAt: string; // ISO-8601
+  sportProfile: SportProfileDto;
+  createdAt: string;
 }
 
 // ── API DTOs ───────────────────────────────────────────────────────────────
@@ -39,8 +48,18 @@ export interface LoginRequest {
 }
 
 export interface AuthResponse {
-  accessToken: string;  // champ retourné par le backend Spring Boot
+  accessToken: string;
   userId: string;
+}
+
+export interface UpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  sports?: SportLevelDto[];
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  country?: string;
 }
 
 export interface UserSummary {
@@ -49,10 +68,4 @@ export interface UserSummary {
   lastName: string;
   primarySport?: string;
   proficiency?: Proficiency;
-}
-
-export interface UpdateProfileRequest {
-  firstName?: string;
-  lastName?: string;
-  sportProfiles?: SportProfile[];
 }
