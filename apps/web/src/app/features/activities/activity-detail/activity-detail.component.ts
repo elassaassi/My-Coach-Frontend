@@ -62,8 +62,9 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
 
   // ── Chat ───────────────────────────────────────────────────────────────
   messages: ActivityMessage[] = [];
-  chatInput = '';
-  sending   = false;
+  chatInput    = '';
+  sending      = false;
+  chatError    = '';
   private chatInterval: ReturnType<typeof setInterval> | null = null;
 
   get currentUserId(): string | null { return this.authService.currentUserId; }
@@ -253,14 +254,19 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   sendMessage(): void {
     const content = this.chatInput.trim();
     if (!content || !this.activity || this.sending) return;
-    this.sending = true;
+    this.chatError = '';
+    this.sending   = true;
     this.activityService.sendMessage(this.activity.id, content).subscribe({
       next: (msg) => {
-        this.messages = [...this.messages, msg];
+        this.messages  = [...this.messages, msg];
         this.chatInput = '';
         this.sending   = false;
       },
-      error: () => { this.sending = false; },
+      error: (err) => {
+        this.sending   = false;
+        this.chatError = err?.error?.error ?? 'Erreur lors de l\'envoi. Réessaie.';
+        setTimeout(() => { this.chatError = ''; }, 4000);
+      },
     });
   }
 

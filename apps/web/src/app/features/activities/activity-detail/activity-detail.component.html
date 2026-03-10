@@ -195,6 +195,9 @@
       </div>
     </div>
 
+    <!-- Chat error -->
+    <div *ngIf="chatError" class="chat-error" aria-live="polite">⚠️ {{ chatError }}</div>
+
     <!-- Chat input -->
     <div *ngIf="canChat" class="chat-input-row">
       <textarea
