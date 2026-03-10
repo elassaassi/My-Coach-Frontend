@@ -20,7 +20,7 @@ export class HighlightService {
     return this.http.get<Highlight[]>(this.BASE);
   }
 
-  like(id: string): Observable<void> {
-    return this.http.post<void>(`${this.BASE}/${id}/like`, {});
+  like(id: string, liked: boolean): Observable<void> {
+    return this.http.post<void>(`${this.BASE}/${id}/like`, { liked });
   }
 }

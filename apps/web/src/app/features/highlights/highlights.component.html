@@ -1,0 +1,167 @@
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<div class="feed-wrap">
+  <header class="feed-header">
+    <div>
+      <h2 class="feed-header__title">🎬 Fil d'actualités</h2>
+      <p class="feed-header__sub">Photos & vidéos de la communauté</p>
+    </div>
+    <button class="btn btn--primary btn--sm" (click)="openModal()">+ Publier</button>
+  </header>
+
+  <!-- ── Highlight du jour ──────────────────────────────────────────────── -->
+  <div *ngIf="highlightOfDay" class="hod-banner">
+    <div class="hod-banner__label">🏆 Highlight du jour</div>
+    <div class="hod-banner__card">
+      <!-- Media -->
+      <div class="media-box media-box--hod">
+        <img *ngIf="isImage(highlightOfDay.mediaUrl)"
+             [src]="highlightOfDay.mediaUrl"
+             class="media-box__img"
+             alt="highlight"
+             (error)="$any($event.target).style.display='none'" />
+        <div *ngIf="!isImage(highlightOfDay.mediaUrl)" class="media-box__video-placeholder">
+          <span class="media-box__play">▶</span>
+        </div>
+      </div>
+      <!-- Info -->
+      <div class="hod-banner__info">
+        <span class="sport-chip">{{ sportMeta(highlightOfDay.sport).emoji }} {{ sportMeta(highlightOfDay.sport).label }}</span>
+        <p class="hod-banner__caption">{{ highlightOfDay.caption }}</p>
+        <div class="hod-banner__meta">
+          <div class="avatar avatar--sm"
+               [style.background]="'hsl(' + avatarHue(highlightOfDay.publisherId) + ',60%,45%)'">
+            {{ avatarInitial(highlightOfDay.publisherId) }}
+          </div>
+          <span class="like-count">❤️ {{ highlightOfDay.likeCount }}</span>
+          <span class="time-ago">{{ timeAgo(highlightOfDay.publishedAt) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Loading ────────────────────────────────────────────────────────── -->
+  <div *ngIf="loading" class="feed-grid">
+    <div *ngFor="let _ of [1,2,3,4,5,6]" class="skeleton-card">
+      <div class="skeleton skeleton--media"></div>
+      <div class="skeleton skeleton--line" style="width:60%;margin-top:.75rem"></div>
+      <div class="skeleton skeleton--line" style="width:40%;margin-top:.5rem"></div>
+    </div>
+  </div>
+
+  <!-- ── Feed ──────────────────────────────────────────────────────────── -->
+  <div *ngIf="!loading" class="feed-grid">
+
+    <div *ngIf="feedWithoutHod().length === 0" class="empty-feed">
+      <span class="empty-feed__icon">📸</span>
+      <p>Aucun highlight pour l'instant.</p>
+      <p>Sois le premier à partager un moment fort !</p>
+      <button class="btn btn--primary btn--sm" (click)="openModal()">Publier un highlight</button>
+    </div>
+
+    <div *ngFor="let h of feedWithoutHod()" class="highlight-card">
+
+      <!-- Media -->
+      <div class="media-box">
+        <img *ngIf="isImage(h.mediaUrl)"
+             [src]="h.mediaUrl"
+             class="media-box__img"
+             alt="highlight"
+             (error)="$any($event.target).style.display='none'" />
+        <div *ngIf="!isImage(h.mediaUrl)" class="media-box__video-placeholder">
+          <span class="media-box__play">▶</span>
+          <span class="media-box__type">{{ h.mediaType }}</span>
+        </div>
+        <span *ngIf="h.isHighlightOfDay" class="media-box__hod-badge">🏆</span>
+      </div>
+
+      <!-- Card body -->
+      <div class="highlight-card__body">
+        <!-- Sport + time -->
+        <div class="highlight-card__top">
+          <span class="sport-chip sport-chip--sm">
+            {{ sportMeta(h.sport).emoji }} {{ sportMeta(h.sport).label }}
+          </span>
+          <span class="time-ago">{{ timeAgo(h.publishedAt) }}</span>
+        </div>
+
+        <!-- Caption -->
+        <p class="highlight-card__caption">{{ h.caption }}</p>
+
+        <!-- Footer: avatar + likes -->
+        <div class="highlight-card__footer">
+          <div class="avatar avatar--xs"
+               [style.background]="'hsl(' + avatarHue(h.publisherId) + ',60%,45%)'">
+            {{ avatarInitial(h.publisherId) }}
+          </div>
+
+          <button class="like-btn"
+                  [class.like-btn--liked]="isLiked(h.id)"
+                  [disabled]="likingId === h.id"
+                  (click)="toggleLike(h)"
+                  aria-label="Liker">
+            <span class="like-btn__heart">{{ isLiked(h.id) ? '❤️' : '🤍' }}</span>
+            <span class="like-btn__count">{{ h.likeCount }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PUBLISH MODAL
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" [class.modal-backdrop--visible]="modalOpen" (click)="closeModal()"></div>
+
+<div class="modal" [class.modal--open]="modalOpen" role="dialog" aria-label="Publier un highlight">
+  <div class="modal__header">
+    <h3 class="modal__title">Publier un highlight</h3>
+    <button class="modal__close" (click)="closeModal()">✕</button>
+  </div>
+
+  <div class="modal__body">
+    <!-- Type -->
+    <div class="form-group">
+      <label class="form-label">Type de média</label>
+      <div class="type-toggle">
+        <button class="type-btn" [class.type-btn--active]="publishType === 'PHOTO'"
+                (click)="publishType = 'PHOTO'">📷 Photo</button>
+        <button class="type-btn" [class.type-btn--active]="publishType === 'VIDEO'"
+                (click)="publishType = 'VIDEO'">🎬 Vidéo</button>
+      </div>
+    </div>
+
+    <!-- URL -->
+    <div class="form-group">
+      <label class="form-label">URL {{ publishType === 'PHOTO' ? 'de l\'image' : 'de la vidéo' }}</label>
+      <input class="form-input" [(ngModel)]="publishMediaUrl"
+             placeholder="https://..." type="url" />
+    </div>
+
+    <!-- Caption -->
+    <div class="form-group">
+      <label class="form-label">Légende</label>
+      <textarea class="form-input form-input--textarea" [(ngModel)]="publishCaption"
+                placeholder="Décris ce moment..." rows="3" maxlength="500"></textarea>
+    </div>
+
+    <!-- Sport -->
+    <div class="form-group">
+      <label class="form-label">Sport</label>
+      <select class="form-input" [(ngModel)]="publishSport">
+        <option *ngFor="let s of allSports" [value]="s.id">{{ s.emoji }} {{ s.label }}</option>
+      </select>
+    </div>
+
+    <p *ngIf="publishError" class="publish-error">⚠️ {{ publishError }}</p>
+  </div>
+
+  <div class="modal__footer">
+    <button class="btn btn--ghost" (click)="closeModal()">Annuler</button>
+    <button class="btn btn--primary"
+            [disabled]="!publishMediaUrl.trim() || !publishCaption.trim() || publishing"
+            (click)="publish()">
+      {{ publishing ? 'Publication...' : 'Publier' }}
+    </button>
+  </div>
+</div>
