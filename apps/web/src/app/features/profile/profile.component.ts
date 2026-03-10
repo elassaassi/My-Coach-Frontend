@@ -13,7 +13,6 @@ import { User, SportLevelDto, Proficiency } from '@momentum/models';
 import { Activity } from '@momentum/models';
 import { PlayerStats } from '@momentum/models';
 import { MnBadgeComponent } from '@momentum/ui';
-import { MnAvatarComponent } from '@momentum/ui';
 
 const SPORT_META: Record<string, { emoji: string; label: string }> = {
   football:   { emoji: '⚽', label: 'Football'   },
@@ -59,7 +58,7 @@ const CITIES = [
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MnBadgeComponent, MnAvatarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, MnBadgeComponent],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss'],
 })
