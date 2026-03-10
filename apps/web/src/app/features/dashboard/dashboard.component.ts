@@ -44,7 +44,7 @@ import { MnCardComponent, MnBadgeComponent } from '@momentum/ui';
         </div>
         <div class="activities-grid">
           <mn-card *ngFor="let a of activities" [clickable]="true" [elevated]="true">
-            <div class="activity-item">
+            <a [routerLink]="['/activities', a.id]" class="activity-item">
               <div class="activity-item__top">
                 <span class="activity-item__sport">{{ a.sport }}</span>
                 <mn-badge [color]="a.status === 'OPEN' ? 'success' : 'warning'">
@@ -58,7 +58,7 @@ import { MnCardComponent, MnBadgeComponent } from '@momentum/ui';
               <p class="activity-item__spots">
                 {{ a.currentParticipantsCount }}/{{ a.maxParticipants }} joueurs
               </p>
-            </div>
+            </a>
           </mn-card>
         </div>
       </section>

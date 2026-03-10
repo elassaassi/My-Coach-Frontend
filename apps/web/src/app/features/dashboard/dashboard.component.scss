@@ -92,6 +92,10 @@
 
 // ── Activity item ──────────────────────────────────────────────────────────
 .activity-item {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+
   &__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2); }
   &__sport { font-size: var(--text-2xl); }
   &__title { font-size: var(--text-base); font-weight: var(--fw-semibold); margin-bottom: var(--space-2); }
