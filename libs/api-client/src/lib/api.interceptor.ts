@@ -16,8 +16,8 @@ export const apiUnwrapInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown
     map(event => {
       if (event instanceof HttpResponse && event.body && typeof event.body === 'object') {
         const body = event.body as Record<string, unknown>;
-        if ('success' in body && 'data' in body) {
-          return event.clone({ body: body['data'] });
+        if ('success' in body) {
+          return event.clone({ body: 'data' in body ? body['data'] : null });
         }
       }
       return event;

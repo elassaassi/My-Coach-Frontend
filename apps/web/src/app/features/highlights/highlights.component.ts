@@ -125,13 +125,16 @@ export class HighlightsComponent implements OnInit {
 
   sportMeta(sport: string) { return SPORT_META[sport] ?? { emoji: '🏅', label: sport }; }
 
-  avatarHue(id: string): number {
+  avatarHue(id: string | null | undefined): number {
+    if (!id) return 0;
     let h = 0;
     for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffffff;
     return Math.abs(h) % 360;
   }
 
-  avatarInitial(id: string): string { return id.slice(0, 2).toUpperCase(); }
+  avatarInitial(id: string | null | undefined): string {
+    return id ? id.slice(0, 2).toUpperCase() : '??';
+  }
 
   isImage(url: string): boolean {
     return /\.(jpe?g|png|gif|webp|avif|svg)(\?.*)?$/i.test(url);

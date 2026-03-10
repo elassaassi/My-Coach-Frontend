@@ -111,57 +111,59 @@
 <!-- ══════════════════════════════════════════════════════════════════════════
      PUBLISH MODAL
 ══════════════════════════════════════════════════════════════════════════ -->
-<div class="modal-backdrop" [class.modal-backdrop--visible]="modalOpen" (click)="closeModal()"></div>
+<ng-container *ngIf="modalOpen">
+  <div class="modal-backdrop" (click)="closeModal()"></div>
 
-<div class="modal" [class.modal--open]="modalOpen" role="dialog" aria-label="Publier un highlight">
-  <div class="modal__header">
-    <h3 class="modal__title">Publier un highlight</h3>
-    <button class="modal__close" (click)="closeModal()">✕</button>
-  </div>
+  <div class="modal" role="dialog" aria-label="Publier un highlight">
+    <div class="modal__header">
+      <h3 class="modal__title">Publier un highlight</h3>
+      <button class="modal__close" (click)="closeModal()">✕</button>
+    </div>
 
-  <div class="modal__body">
-    <!-- Type -->
-    <div class="form-group">
-      <label class="form-label">Type de média</label>
-      <div class="type-toggle">
-        <button class="type-btn" [class.type-btn--active]="publishType === 'PHOTO'"
-                (click)="publishType = 'PHOTO'">📷 Photo</button>
-        <button class="type-btn" [class.type-btn--active]="publishType === 'VIDEO'"
-                (click)="publishType = 'VIDEO'">🎬 Vidéo</button>
+    <div class="modal__body">
+      <!-- Type -->
+      <div class="form-group">
+        <label class="form-label">Type de média</label>
+        <div class="type-toggle">
+          <button class="type-btn" [class.type-btn--active]="publishType === 'PHOTO'"
+                  (click)="publishType = 'PHOTO'">📷 Photo</button>
+          <button class="type-btn" [class.type-btn--active]="publishType === 'VIDEO'"
+                  (click)="publishType = 'VIDEO'">🎬 Vidéo</button>
+        </div>
       </div>
+
+      <!-- URL -->
+      <div class="form-group">
+        <label class="form-label">URL {{ publishType === 'PHOTO' ? 'de l\'image' : 'de la vidéo' }}</label>
+        <input class="form-input" [(ngModel)]="publishMediaUrl"
+               placeholder="https://..." type="text" />
+      </div>
+
+      <!-- Caption -->
+      <div class="form-group">
+        <label class="form-label">Légende</label>
+        <textarea class="form-input form-input--textarea" [(ngModel)]="publishCaption"
+                  placeholder="Décris ce moment..." rows="3" maxlength="500"></textarea>
+      </div>
+
+      <!-- Sport -->
+      <div class="form-group">
+        <label class="form-label">Sport</label>
+        <select class="form-input" [(ngModel)]="publishSport">
+          <option *ngFor="let s of allSports" [value]="s.id">{{ s.emoji }} {{ s.label }}</option>
+        </select>
+      </div>
+
+      <p *ngIf="publishError" class="publish-error">⚠️ {{ publishError }}</p>
     </div>
 
-    <!-- URL -->
-    <div class="form-group">
-      <label class="form-label">URL {{ publishType === 'PHOTO' ? 'de l\'image' : 'de la vidéo' }}</label>
-      <input class="form-input" [(ngModel)]="publishMediaUrl"
-             placeholder="https://..." type="url" />
+    <div class="modal__footer">
+      <button class="btn btn--ghost" (click)="closeModal()">Annuler</button>
+      <button class="btn btn--primary"
+              [disabled]="!publishMediaUrl.trim() || !publishCaption.trim() || publishing"
+              (click)="publish()">
+        {{ publishing ? 'Publication...' : 'Publier' }}
+      </button>
     </div>
-
-    <!-- Caption -->
-    <div class="form-group">
-      <label class="form-label">Légende</label>
-      <textarea class="form-input form-input--textarea" [(ngModel)]="publishCaption"
-                placeholder="Décris ce moment..." rows="3" maxlength="500"></textarea>
-    </div>
-
-    <!-- Sport -->
-    <div class="form-group">
-      <label class="form-label">Sport</label>
-      <select class="form-input" [(ngModel)]="publishSport">
-        <option *ngFor="let s of allSports" [value]="s.id">{{ s.emoji }} {{ s.label }}</option>
-      </select>
-    </div>
-
-    <p *ngIf="publishError" class="publish-error">⚠️ {{ publishError }}</p>
   </div>
-
-  <div class="modal__footer">
-    <button class="btn btn--ghost" (click)="closeModal()">Annuler</button>
-    <button class="btn btn--primary"
-            [disabled]="!publishMediaUrl.trim() || !publishCaption.trim() || publishing"
-            (click)="publish()">
-      {{ publishing ? 'Publication...' : 'Publier' }}
-    </button>
-  </div>
-</div>
+</ng-container>
