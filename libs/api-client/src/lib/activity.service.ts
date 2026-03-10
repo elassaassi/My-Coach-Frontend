@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Activity, ActivitySearchParams, CreateActivityRequest } from '@momentum/models';
+import { Activity, ActivityMessage, ActivitySearchParams, CreateActivityRequest } from '@momentum/models';
 
 @Injectable({ providedIn: 'root' })
 export class ActivityService {
@@ -36,5 +36,13 @@ export class ActivityService {
 
   leave(id: string): Observable<void> {
     return this.http.delete<void>(`${this.BASE}/${id}/leave`);
+  }
+
+  getMessages(activityId: string): Observable<ActivityMessage[]> {
+    return this.http.get<ActivityMessage[]>(`${this.BASE}/${activityId}/messages`);
+  }
+
+  sendMessage(activityId: string, content: string): Observable<ActivityMessage> {
+    return this.http.post<ActivityMessage>(`${this.BASE}/${activityId}/messages`, { content });
   }
 }

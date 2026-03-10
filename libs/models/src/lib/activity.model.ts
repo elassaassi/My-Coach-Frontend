@@ -44,6 +44,14 @@ export interface CreateActivityRequest {
   description?: string;
 }
 
+export interface ActivityMessage {
+  id: string;
+  activityId: string;
+  senderId: string;
+  content: string;
+  sentAt: string;
+}
+
 export interface ActivitySearchParams {
   sport?: string;
   city?: string;

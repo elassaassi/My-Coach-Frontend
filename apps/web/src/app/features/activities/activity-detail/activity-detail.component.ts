@@ -1,9 +1,12 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ActivityService } from '@momentum/api-client';
+import { forkJoin, catchError, of } from 'rxjs';
+import { ActivityService, UserService, RatingService } from '@momentum/api-client';
 import { AuthService } from '@momentum/api-client';
-import { Activity } from '@momentum/models';
+import { Activity, ActivityMessage, User } from '@momentum/models';
+import { PlayerStats } from '@momentum/models';
 import { MnBadgeComponent } from '@momentum/ui';
 
 const SPORT_META: Record<string, { emoji: string; label: string }> = {
@@ -27,7 +30,7 @@ const LEVEL_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-activity-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, MnBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterLink, MnBadgeComponent],
   templateUrl: './activity-detail.component.html',
   styleUrls: ['./activity-detail.component.scss'],
 })
@@ -36,6 +39,8 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   private readonly router          = inject(Router);
   private readonly activityService = inject(ActivityService);
   private readonly authService     = inject(AuthService);
+  private readonly userService     = inject(UserService);
+  private readonly ratingService   = inject(RatingService);
 
   activity: Activity | null = null;
   loading  = true;
@@ -49,6 +54,18 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   // Success flash
   joinSuccess = false;
 
+  // ── Player profile modal ────────────────────────────────────────────────
+  playerPanelOpen  = false;
+  playerPanelUser: User | null = null;
+  playerPanelStats: PlayerStats | null = null;
+  playerPanelLoading = false;
+
+  // ── Chat ───────────────────────────────────────────────────────────────
+  messages: ActivityMessage[] = [];
+  chatInput = '';
+  sending   = false;
+  private chatInterval: ReturnType<typeof setInterval> | null = null;
+
   get currentUserId(): string | null { return this.authService.currentUserId; }
 
   get isOrganizer(): boolean {
@@ -59,6 +76,8 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     if (!this.activity || !this.currentUserId) return false;
     return this.activity.participants.some(p => p.userId === this.currentUserId);
   }
+
+  get canChat(): boolean { return this.isOrganizer || this.isParticipant; }
 
   get spotsLeft(): number {
     if (!this.activity) return 0;
@@ -97,6 +116,8 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
         this.activity = a;
         this.loading  = false;
         this.startCountdown();
+        this.loadChat();
+        this.startChatPolling();
       },
       error: () => { this.error = true; this.loading = false; },
     });
@@ -104,6 +125,7 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.countdownInterval) clearInterval(this.countdownInterval);
+    if (this.chatInterval) clearInterval(this.chatInterval);
   }
 
   join(): void {
@@ -114,7 +136,6 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
         this.joining = false;
         this.joinSuccess = true;
         setTimeout(() => { this.joinSuccess = false; }, 3000);
-        // Reload to get fresh participant list
         this.reload();
       },
       error: () => { this.joining = false; },
@@ -165,5 +186,96 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     if (!this.activity) return;
     const { latitude, longitude } = this.activity.location;
     window.open(`https://maps.google.com/?q=${latitude},${longitude}`, '_blank');
+  }
+
+  // ── Player profile modal ─────────────────────────────────────────────────
+
+  openPlayerProfile(userId: string): void {
+    this.playerPanelOpen    = true;
+    this.playerPanelUser    = null;
+    this.playerPanelStats   = null;
+    this.playerPanelLoading = true;
+
+    forkJoin({
+      user:  this.userService.getById(userId),
+      stats: this.ratingService.getPlayerStats(userId).pipe(catchError(() => of(null))),
+    }).subscribe({
+      next: ({ user, stats }) => {
+        this.playerPanelUser    = user;
+        this.playerPanelStats   = stats;
+        this.playerPanelLoading = false;
+      },
+      error: () => { this.playerPanelLoading = false; },
+    });
+  }
+
+  closePlayerPanel(): void {
+    this.playerPanelOpen = false;
+  }
+
+  proficiencyLabel(p: string): string {
+    const map: Record<string, string> = {
+      BEGINNER: 'Débutant', INTERMEDIATE: 'Intermédiaire', ADVANCED: 'Avancé', ELITE: 'Élite',
+    };
+    return map[p] ?? p;
+  }
+
+  proficiencyColor(p: string): 'success' | 'warning' | 'error' | 'neutral' {
+    if (p === 'ELITE')        return 'error';
+    if (p === 'ADVANCED')     return 'warning';
+    if (p === 'INTERMEDIATE') return 'success';
+    return 'neutral';
+  }
+
+  get playerProScoreCircle(): number {
+    const score = this.playerPanelStats?.proScore ?? 0;
+    const circumference = 2 * Math.PI * 44;
+    return circumference - (score / 100) * circumference;
+  }
+
+  stars(val: number): boolean[] {
+    return Array.from({ length: 5 }, (_, i) => i < Math.round(val));
+  }
+
+  // ── Chat ─────────────────────────────────────────────────────────────────
+
+  private loadChat(): void {
+    if (!this.activity) return;
+    this.activityService.getMessages(this.activity.id).subscribe({
+      next: (msgs) => { this.messages = msgs; },
+    });
+  }
+
+  private startChatPolling(): void {
+    this.chatInterval = setInterval(() => this.loadChat(), 10_000);
+  }
+
+  sendMessage(): void {
+    const content = this.chatInput.trim();
+    if (!content || !this.activity || this.sending) return;
+    this.sending = true;
+    this.activityService.sendMessage(this.activity.id, content).subscribe({
+      next: (msg) => {
+        this.messages = [...this.messages, msg];
+        this.chatInput = '';
+        this.sending   = false;
+      },
+      error: () => { this.sending = false; },
+    });
+  }
+
+  onChatKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.sendMessage();
+    }
+  }
+
+  isOwnMessage(msg: ActivityMessage): boolean {
+    return msg.senderId === this.currentUserId;
+  }
+
+  messageSenderInitial(senderId: string): string {
+    return senderId.slice(0, 2).toUpperCase();
   }
 }

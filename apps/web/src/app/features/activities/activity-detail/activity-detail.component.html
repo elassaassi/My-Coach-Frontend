@@ -129,9 +129,10 @@
 
     <div class="participants-grid">
       <div *ngFor="let p of activity.participants; let i = index"
-           class="participant-chip"
+           class="participant-chip participant-chip--clickable"
            [class.participant-chip--organizer]="p.userId === activity.organizerId"
-           [title]="p.userId === activity.organizerId ? 'Organisateur' : 'Participant'">
+           (click)="openPlayerProfile(p.userId)"
+           [title]="'Voir le profil'">
         <div class="participant-chip__avatar"
              [style.background]="'hsl(' + avatarHue(p.userId) + ',65%,50%)'">
           {{ participantInitial(p.userId) }}
@@ -143,6 +144,7 @@
           </span>
           <span class="participant-chip__joined">Inscrit {{ p.joinedAt | date:'dd/MM' }}</span>
         </div>
+        <span class="participant-chip__arrow">›</span>
       </div>
 
       <!-- Empty slots -->
@@ -160,4 +162,153 @@
     Les sessions {{ sportMeta(activity.sport).label }} dans {{ activity.location.city }} affichent complet en moyenne en <strong>18 min</strong>.
   </div>
 
+  <!-- ── CHAT ──────────────────────────────────────────────────────────── -->
+  <div class="chat-section">
+    <h3 class="section-title">
+      Chat du groupe
+      <span class="section-title__count">{{ messages.length }}</span>
+    </h3>
+
+    <!-- Not member notice -->
+    <div *ngIf="!canChat" class="chat-locked">
+      🔒 Rejoins la session pour accéder au chat des participants.
+    </div>
+
+    <!-- Chat messages -->
+    <div *ngIf="canChat" class="chat-box">
+      <div *ngIf="messages.length === 0" class="chat-empty">
+        Aucun message pour l'instant. Sois le premier à dire bonjour 👋
+      </div>
+
+      <div *ngFor="let msg of messages"
+           class="chat-msg"
+           [class.chat-msg--own]="isOwnMessage(msg)">
+        <div *ngIf="!isOwnMessage(msg)"
+             class="chat-msg__avatar"
+             [style.background]="'hsl(' + avatarHue(msg.senderId) + ',65%,45%)'">
+          {{ messageSenderInitial(msg.senderId) }}
+        </div>
+        <div class="chat-msg__bubble">
+          <span class="chat-msg__text">{{ msg.content }}</span>
+          <span class="chat-msg__time">{{ msg.sentAt | date:'HH:mm' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat input -->
+    <div *ngIf="canChat" class="chat-input-row">
+      <textarea
+        class="chat-input"
+        [(ngModel)]="chatInput"
+        (keydown)="onChatKeydown($event)"
+        placeholder="Envoie un message... (Entrée pour envoyer)"
+        rows="1"
+        maxlength="2000">
+      </textarea>
+      <button class="chat-send-btn"
+              (click)="sendMessage()"
+              [disabled]="!chatInput.trim() || sending">
+        {{ sending ? '...' : '➤' }}
+      </button>
+    </div>
+  </div>
+
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PLAYER PROFILE PANEL (slide-in)
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="drawer-backdrop"
+     [class.drawer-backdrop--visible]="playerPanelOpen"
+     (click)="closePlayerPanel()">
+</div>
+
+<aside class="drawer" [class.drawer--open]="playerPanelOpen" role="dialog" aria-label="Profil du joueur">
+  <div class="drawer__header">
+    <h2 class="drawer__title">Profil du joueur</h2>
+    <button class="drawer__close" (click)="closePlayerPanel()" aria-label="Fermer">✕</button>
+  </div>
+
+  <div class="drawer__body">
+
+    <!-- Loading -->
+    <div *ngIf="playerPanelLoading" class="player-loading">
+      <div class="skeleton skeleton--line" style="width:60%;height:2rem;margin-bottom:1rem"></div>
+      <div class="skeleton skeleton--line" style="width:40%"></div>
+    </div>
+
+    <ng-container *ngIf="!playerPanelLoading && playerPanelUser">
+      <!-- Identity -->
+      <div class="player-hero">
+        <div class="player-avatar"
+             [style.background]="'hsl(' + avatarHue(playerPanelUser.id) + ',60%,42%)'">
+          {{ playerPanelUser.firstName[0] }}{{ playerPanelUser.lastName[0] }}
+        </div>
+        <div class="player-hero__info">
+          <h3 class="player-hero__name">{{ playerPanelUser.firstName }} {{ playerPanelUser.lastName }}</h3>
+          <p *ngIf="playerPanelUser.sportProfile?.city" class="player-hero__city">
+            📍 {{ playerPanelUser.sportProfile.city }}
+          </p>
+        </div>
+      </div>
+
+      <!-- ProScore mini-ring -->
+      <div *ngIf="playerPanelStats" class="player-proscore">
+        <svg class="proscore-ring proscore-ring--sm" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="44" class="proscore-ring__track"/>
+          <circle cx="50" cy="50" r="44" class="proscore-ring__fill"
+                  [style.stroke-dashoffset]="playerProScoreCircle"
+                  [style.stroke]="playerPanelStats.proScore >= 80 ? '#F5C400' : playerPanelStats.proScore >= 60 ? '#22c55e' : 'var(--clr-primary)'"/>
+        </svg>
+        <div class="proscore-center proscore-center--sm">
+          <span class="proscore-center__value">{{ playerPanelStats.proScore }}</span>
+          <span class="proscore-center__label">ProScore</span>
+        </div>
+      </div>
+
+      <!-- Stats mini-grid -->
+      <div *ngIf="playerPanelStats" class="player-stats-grid">
+        <div class="player-stat">
+          <span class="player-stat__label">Technique</span>
+          <div class="player-stat__stars">
+            <span *ngFor="let on of stars(playerPanelStats.avgTechnicality)"
+                  [class]="on ? 'star star--on' : 'star'">★</span>
+          </div>
+        </div>
+        <div class="player-stat">
+          <span class="player-stat__label">Comportement</span>
+          <div class="player-stat__stars">
+            <span *ngFor="let on of stars(playerPanelStats.avgBehavior)"
+                  [class]="on ? 'star star--on' : 'star'">★</span>
+          </div>
+        </div>
+        <div class="player-stat">
+          <span class="player-stat__label">Esprit d'équipe</span>
+          <div class="player-stat__stars">
+            <span *ngFor="let on of stars(playerPanelStats.avgTeamwork)"
+                  [class]="on ? 'star star--on' : 'star'">★</span>
+          </div>
+        </div>
+        <div class="player-stat player-stat--highlight">
+          <span class="player-stat__label">Man of the Match</span>
+          <span class="player-stat__mom">🏆 × {{ playerPanelStats.manOfMatchCount }}</span>
+        </div>
+      </div>
+
+      <div *ngIf="!playerPanelStats" class="player-no-stats">
+        Pas encore de statistiques pour ce joueur.
+      </div>
+
+      <!-- Sports -->
+      <div *ngIf="playerPanelUser.sportProfile?.sports?.length" class="player-sports">
+        <h4 class="player-sports__title">Sports pratiqués</h4>
+        <div *ngFor="let s of playerPanelUser.sportProfile.sports" class="player-sport-row">
+          <span class="player-sport-row__emoji">{{ sportMeta(s.sport).emoji }}</span>
+          <span class="player-sport-row__name">{{ sportMeta(s.sport).label }}</span>
+          <mn-badge [color]="proficiencyColor(s.proficiency)">{{ proficiencyLabel(s.proficiency) }}</mn-badge>
+          <span class="player-sport-row__exp">{{ s.yearsExperience }}an{{ s.yearsExperience > 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</aside>
