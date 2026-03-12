@@ -425,6 +425,7 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
           destination: { lat: toLat, lng: toLon },
           travelMode,
         }, (result: any, status: string) => {
+          console.log(`[Maps] ${mode} status=${status}`, result);
           if (status === 'OK' && result?.routes?.[0]?.legs?.[0]) {
             const leg = result.routes[0].legs[0];
             this.travelRoutes = {
@@ -435,6 +436,9 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
                 isEstimate: false,
               },
             };
+          } else {
+            // Google Maps failed — fall back to OSRM for this mode
+            this.loadOsrmRouteForMode(mode, toLat, toLon);
           }
         });
       });
@@ -452,29 +456,33 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadOsrmRoutes(toLat: number, toLon: number): void {
+    (['car', 'bike', 'walk'] as TravelMode[]).forEach(mode =>
+      this.loadOsrmRouteForMode(mode, toLat, toLon)
+    );
+  }
+
+  private loadOsrmRouteForMode(mode: TravelMode, toLat: number, toLon: number): void {
     const coords = `${this.userLon},${this.userLat};${toLon},${toLat}`;
-    const modes: { mode: TravelMode; url: string }[] = [
-      { mode: 'car',  url: `https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`  },
-      { mode: 'bike', url: `https://routing.openstreetmap.de/routed-bike/route/v1/cycling/${coords}?overview=false` },
-      { mode: 'walk', url: `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coords}?overview=false`   },
-    ];
-    modes.forEach(({ mode, url }) => {
-      this.http.get<any>(url).subscribe({
-        next: (res) => {
-          const route = res?.routes?.[0];
-          if (route?.duration != null && route?.distance != null) {
-            this.travelRoutes = {
-              ...this.travelRoutes,
-              [mode]: {
-                duration:   this.formatDuration(route.duration),
-                distance:   this.formatDistance(route.distance),
-                isEstimate: false,
-              },
-            };
-          }
-        },
-        error: () => { /* keep straight-line fallback */ },
-      });
+    const urls: Record<TravelMode, string> = {
+      car:  `https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`,
+      bike: `https://routing.openstreetmap.de/routed-bike/route/v1/cycling/${coords}?overview=false`,
+      walk: `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coords}?overview=false`,
+    };
+    this.http.get<any>(urls[mode]).subscribe({
+      next: (res) => {
+        const route = res?.routes?.[0];
+        if (route?.duration != null && route?.distance != null) {
+          this.travelRoutes = {
+            ...this.travelRoutes,
+            [mode]: {
+              duration:   this.formatDuration(route.duration),
+              distance:   this.formatDistance(route.distance),
+              isEstimate: false,
+            },
+          };
+        }
+      },
+      error: () => { /* keep straight-line fallback */ },
     });
   }
 
