@@ -123,6 +123,8 @@
           <ng-container *ngIf="activeRoute">
             <span class="travel-info__duration">{{ activeRoute.duration }}</span>
             <span class="travel-info__distance">· {{ activeRoute.distance }}</span>
+            <span class="travel-info__traffic-note" *ngIf="!activeRoute.isEstimate">sans trafic</span>
+            <span class="travel-info__traffic-note travel-info__traffic-note--estimate" *ngIf="activeRoute.isEstimate">vol d'oiseau ×1.3</span>
           </ng-container>
           <ng-container *ngIf="!activeRoute">
             <div class="skel skel--sm" style="width:120px;height:18px"></div>

@@ -11,7 +11,7 @@ import { Activity, ActivityMessage, Participant, User } from '@momentum/models';
 import { PlayerStats } from '@momentum/models';
 import { MnBadgeComponent } from '@momentum/ui';
 
-interface TravelRoute { duration: string; distance: string; }
+interface TravelRoute { duration: string; distance: string; isEstimate?: boolean; }
 type TravelMode = 'car' | 'bike' | 'walk';
 
 const SPORT_META: Record<string, { emoji: string; label: string }> = {
@@ -360,8 +360,9 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     for (const { mode, speed } of estimates) {
       const secs = (roadKm / speed) * 3600;
       routes[mode] = {
-        duration: this.formatDuration(secs) + ' ≈',
+        duration: this.formatDuration(secs),
         distance: this.formatDistance(roadKm * 1000),
+        isEstimate: true,
       };
     }
     this.travelRoutes = routes;
@@ -417,6 +418,7 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
               [mode]: {
                 duration: this.formatDuration(route.duration),
                 distance: this.formatDistance(route.distance),
+                isEstimate: false,
               },
             };
           }

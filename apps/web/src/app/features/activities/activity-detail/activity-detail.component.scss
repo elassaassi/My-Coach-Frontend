@@ -269,6 +269,23 @@
   }
 
   &__loading { display: flex; gap: var(--space-2); }
+
+  &__traffic-note {
+    font-size: .68rem;
+    color: var(--clr-text-muted);
+    background: var(--clr-surface-alt, #f1f5f9);
+    border: 1px solid var(--clr-border-light, #e2e8f0);
+    border-radius: 999px;
+    padding: 1px 8px;
+    white-space: nowrap;
+    align-self: center;
+
+    &--estimate {
+      color: #92400e;
+      background: #fef3c7;
+      border-color: #fcd34d;
+    }
+  }
 }
 
 .skel {
