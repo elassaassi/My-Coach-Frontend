@@ -1,0 +1,158 @@
+<div class="dashboard">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="dash-header">
+    <div>
+      <h2 class="dash-header__greeting">Bonjour 👋</h2>
+      <p class="dash-header__sub">Que joues-tu aujourd'hui ?</p>
+    </div>
+    <a routerLink="/activities/create" class="cta-btn">
+      <span>＋</span> Créer une activité
+    </a>
+  </header>
+
+  <!-- ── Stats rapides ────────────────────────────────────────────────────── -->
+  <div class="stats-row">
+    <div class="stat-chip">
+      <span class="stat-chip__icon">🎮</span>
+      <div>
+        <span class="stat-chip__val">12</span>
+        <span class="stat-chip__lbl">Activités</span>
+      </div>
+    </div>
+    <div class="stat-chip stat-chip--accent">
+      <span class="stat-chip__icon">⭐</span>
+      <div>
+        <span class="stat-chip__val">78</span>
+        <span class="stat-chip__lbl">ProScore</span>
+      </div>
+    </div>
+    <div class="stat-chip">
+      <span class="stat-chip__icon">🏅</span>
+      <div>
+        <span class="stat-chip__val">3</span>
+        <span class="stat-chip__lbl">MVP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Activités ouvertes ──────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section__head">
+      <h3 class="section__title">Activités ouvertes</h3>
+      <a routerLink="/activities" class="section__more">Voir tout →</a>
+    </div>
+
+    <!-- Skeleton -->
+    <div *ngIf="loading" class="act-grid">
+      <div *ngFor="let _ of [1,2,3,4,5,6]" class="act-skeleton">
+        <div class="act-skeleton__accent"></div>
+        <div class="act-skeleton__body">
+          <div class="skel skel--sm" style="width:40%"></div>
+          <div class="skel skel--md" style="width:75%;margin-top:8px"></div>
+          <div class="skel skel--sm" style="width:55%;margin-top:6px"></div>
+          <div class="skel skel--bar" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards -->
+    <div *ngIf="!loading" class="act-grid">
+
+      <div *ngIf="activities.length === 0" class="empty-state">
+        <span class="empty-state__icon">🏙️</span>
+        <p>Aucune activité ouverte dans ta zone.</p>
+        <a routerLink="/activities/create" class="cta-btn cta-btn--sm">Créer la première !</a>
+      </div>
+
+      <a *ngFor="let a of activities"
+         [routerLink]="['/activities', a.id]"
+         class="act-card"
+         [class.act-card--urgent]="isUrgent(a)"
+         [class.act-card--full]="a.status === 'FULL'">
+
+        <!-- Accent bar (sport color) -->
+        <div class="act-card__accent" [style.background]="sportMeta(a.sport).gradient"></div>
+
+        <div class="act-card__body">
+
+          <!-- Top row -->
+          <div class="act-card__top">
+            <div class="sport-pill">
+              <span class="sport-pill__emoji">{{ sportMeta(a.sport).emoji }}</span>
+              <span class="sport-pill__label">{{ sportMeta(a.sport).label }}</span>
+            </div>
+            <span class="level-dot"
+                  [style.background]="levelMeta(a.requiredLevel).color"
+                  [title]="levelMeta(a.requiredLevel).label">
+              {{ levelMeta(a.requiredLevel).label }}
+            </span>
+          </div>
+
+          <!-- Title -->
+          <h4 class="act-card__title">{{ a.title }}</h4>
+
+          <!-- Meta : location + time -->
+          <div class="act-card__meta">
+            <span class="act-card__city">📍 {{ a.location.city }}</span>
+            <span class="act-card__sep">·</span>
+            <span class="act-card__time" [class.act-card__time--soon]="isSoon(a.scheduledAt)">
+              {{ isSoon(a.scheduledAt) ? '🔥 ' : '' }}{{ timeUntil(a.scheduledAt) }}
+            </span>
+          </div>
+
+          <!-- Fill bar -->
+          <div class="fill-bar">
+            <div class="fill-bar__track">
+              <div class="fill-bar__fill"
+                   [style.width]="fillPct(a) + '%'"
+                   [class.fill-bar__fill--warn]="fillPct(a) >= 60 && fillPct(a) < 85"
+                   [class.fill-bar__fill--danger]="fillPct(a) >= 85">
+              </div>
+            </div>
+            <span class="fill-bar__label"
+                  [class.fill-bar__label--urgent]="isUrgent(a)"
+                  [class.fill-bar__label--full]="a.status === 'FULL'">
+              {{ spotsLabel(a) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Arrow CTA (shown on hover) -->
+        <div class="act-card__arrow">→</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Highlight du jour ────────────────────────────────────────────────── -->
+  <section class="section" *ngIf="highlightOfDay">
+    <div class="section__head">
+      <h3 class="section__title">🎬 Highlight du jour</h3>
+      <a routerLink="/highlights" class="section__more">Voir tous →</a>
+    </div>
+
+    <a routerLink="/highlights" class="hod-card">
+      <div class="hod-card__media">
+        <img *ngIf="highlightOfDay.mediaType === 'PHOTO'"
+             [src]="highlightOfDay.mediaUrl"
+             class="hod-card__img"
+             alt="Highlight du jour"
+             (error)="$any($event.target).style.display='none'" />
+        <div *ngIf="highlightOfDay.mediaType !== 'PHOTO'" class="hod-card__video-thumb">
+          <video [src]="highlightOfDay.mediaUrl" preload="metadata" muted playsinline
+                 class="hod-card__img"></video>
+          <span class="hod-card__play">▶</span>
+        </div>
+        <span class="hod-card__badge">🏆</span>
+      </div>
+      <div class="hod-card__info">
+        <p class="hod-card__caption">{{ highlightOfDay.caption }}</p>
+        <div class="hod-card__meta">
+          <span class="hod-card__sport">{{ highlightOfDay.sport }}</span>
+          <span class="hod-card__likes">❤️ {{ highlightOfDay.likeCount }}</span>
+        </div>
+      </div>
+    </a>
+  </section>
+
+</div>

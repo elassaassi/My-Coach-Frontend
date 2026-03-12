@@ -34,8 +34,8 @@
       </div>
     </div>
 
-    <!-- Edit button -->
-    <button class="btn btn--ghost btn--edit" (click)="openEdit()">✏️ Modifier</button>
+    <!-- Edit button (own profile only) -->
+    <button *ngIf="isOwnProfile" class="btn btn--ghost btn--edit" (click)="openEdit()">✏️ Modifier</button>
   </div>
 
   <!-- ── PROSCORE RING + STATS ─────────────────────────────────────────── -->
@@ -141,10 +141,10 @@
   <!-- ── MES ACTIVITÉS ────────────────────────────────────────────────────── -->
   <div class="section">
     <h3 class="section__title">
-      Mes sessions à venir
-      <a routerLink="/activities" class="section__link">Voir tout</a>
+      Sessions à venir
+      <span class="section__count" *ngIf="upcomingActivities.length">{{ upcomingActivities.length }}</span>
     </h3>
-    <div *ngIf="upcomingActivities.length; else noUpcoming" class="mini-activities">
+    <div *ngIf="upcomingActivities.length; else noUpcoming" class="mini-activities mini-activities--scroll">
       <a *ngFor="let a of upcomingActivities"
          [routerLink]="['/activities', a.id]"
          class="mini-card">
@@ -153,7 +153,12 @@
           <span class="mini-card__title">{{ a.title }}</span>
           <span class="mini-card__date">{{ a.scheduledAt | date:'EEE dd MMM · HH:mm' }}</span>
         </div>
-        <span class="mini-card__spots">{{ a.currentParticipantsCount }}/{{ a.maxParticipants }}</span>
+        <div class="mini-card__right">
+          <span class="mini-card__spots">{{ a.currentParticipantsCount }}/{{ a.maxParticipants }}</span>
+          <span class="mini-card__status" [attr.data-status]="a.status">
+            {{ a.status === 'FULL' ? 'Complet' : a.status === 'ONGOING' ? 'En cours' : 'Ouvert' }}
+          </span>
+        </div>
       </a>
     </div>
     <ng-template #noUpcoming>
@@ -164,20 +169,28 @@
     </ng-template>
   </div>
 
-  <div class="section" *ngIf="pastActivities.length">
-    <h3 class="section__title">Sessions passées</h3>
-    <div class="mini-activities">
+  <div class="section">
+    <h3 class="section__title">
+      Sessions passées
+      <span class="section__count" *ngIf="pastActivities.length">{{ pastActivities.length }}</span>
+    </h3>
+    <div *ngIf="pastActivities.length; else noPast" class="mini-activities mini-activities--scroll">
       <a *ngFor="let a of pastActivities"
          [routerLink]="['/activities', a.id]"
          class="mini-card mini-card--past">
         <span class="mini-card__emoji">{{ sportMeta(a.sport).emoji }}</span>
         <div class="mini-card__info">
           <span class="mini-card__title">{{ a.title }}</span>
-          <span class="mini-card__date">{{ a.scheduledAt | date:'EEE dd MMM' }}</span>
+          <span class="mini-card__date">{{ a.scheduledAt | date:'EEE dd MMM · HH:mm' }}</span>
         </div>
-        <mn-badge color="neutral">{{ a.status }}</mn-badge>
+        <span class="mini-card__status" [attr.data-status]="a.status">
+          {{ a.status === 'COMPLETED' ? 'Terminé' : a.status === 'CANCELLED' ? 'Annulé' : a.status }}
+        </span>
       </a>
     </div>
+    <ng-template #noPast>
+      <p class="empty-muted">Aucune session terminée.</p>
+    </ng-template>
   </div>
 
 </div>

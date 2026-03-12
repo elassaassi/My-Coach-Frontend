@@ -114,30 +114,179 @@
         <p>Définis le lieu et l'horaire de ta session</p>
       </div>
 
-      <div class="form-grid">
-        <div class="form-field">
-          <label class="form-label">🏙️ Ville</label>
-          <select class="form-input" [(ngModel)]="selectedCity" (change)="onCityChange()">
-            <option *ngFor="let c of cities" [value]="c.name">
-              {{ c.name }} — {{ c.country }}
-            </option>
-          </select>
+      <!-- ① Pays -->
+      <div class="loc-section">
+        <p class="section-label">🌍 Pays</p>
+        <div class="country-pills">
+          <button
+            class="country-btn"
+            [class.country-btn--active]="selectedCountry === 'Maroc'"
+            (click)="selectCountry('Maroc')"
+            type="button">
+            🇲🇦 Maroc
+          </button>
+          <button
+            class="country-btn"
+            [class.country-btn--active]="selectedCountry === 'France'"
+            (click)="selectCountry('France')"
+            type="button">
+            🇫🇷 France
+          </button>
+        </div>
+      </div>
+
+      <!-- ② Région (visible after country selected) -->
+      <div class="loc-section" *ngIf="selectedCountry">
+        <p class="section-label">🗺️ Région</p>
+        <div class="region-wrap">
+          <input
+            class="form-input"
+            [class.form-input--found]="regionSelected"
+            type="text"
+            [(ngModel)]="regionQuery"
+            (focus)="onRegionFocus()"
+            (input)="onRegionInput()"
+            (blur)="onRegionBlur()"
+            [placeholder]="selectedCountry === 'France' ? 'Île-de-France, PACA, Bretagne…' : 'Casablanca-Settat, Rabat-Salé…'"
+            autocomplete="off" />
+          <span class="venue-check" *ngIf="regionSelected">✓</span>
+
+          <div class="region-dropdown" *ngIf="showRegionSuggestions && regionSuggestions.length > 0">
+            <button
+              class="region-option"
+              *ngFor="let r of regionSuggestions"
+              type="button"
+              (mousedown)="selectRegion(r)">
+              <span class="region-option__flag">{{ r.flag }}</span>
+              <div class="region-option__text">
+                <span class="region-option__name">{{ r.name }}</span>
+                <span class="region-option__capital">{{ r.capital }}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ Map preview (after region or venue selected) -->
+      <div class="map-preview" *ngIf="mapSafeUrl">
+        <iframe
+          [src]="mapSafeUrl"
+          class="map-preview__frame"
+          frameborder="0"
+          scrolling="no"
+          marginheight="0"
+          marginwidth="0"
+          title="Carte">
+        </iframe>
+        <div class="map-preview__label" *ngIf="venueSelected">
+          📍 {{ venueName }}
+        </div>
+        <div class="map-preview__label map-preview__label--region" *ngIf="regionSelected && !venueSelected">
+          🗺️ {{ selectedCity }}
+        </div>
+      </div>
+
+      <!-- ④ Venue picker (visible after region selected) -->
+      <div class="venue-section" *ngIf="regionSelected">
+
+        <!-- GPS button -->
+        <div class="venue-section__header">
+          <p class="section-label">🏟️ Terrain</p>
+          <button class="loc-pill"
+                  [class.loc-pill--found]="userLat !== null"
+                  [class.loc-pill--loading]="locating"
+                  (click)="useMyLocation()"
+                  type="button">
+            <span *ngIf="!locating && userLat === null">📍 Ma position</span>
+            <span *ngIf="locating">⏳ Localisation…</span>
+            <span *ngIf="!locating && userLat !== null">✓ Position trouvée — actualiser</span>
+          </button>
+        </div>
+        <p *ngIf="locError" class="field-error">{{ locError }}</p>
+
+        <!-- Nearby venues list skeleton -->
+        <div class="nearby-loading" *ngIf="loadingVenues">
+          <div class="venue-skel" *ngFor="let _ of [1,2,3,4,5]"></div>
         </div>
 
-        <div class="form-field">
-          <label class="form-label">📍 Lieu / Terrain</label>
-          <input class="form-input" type="text" [(ngModel)]="venueName"
-                 placeholder="Terrain municipal, Gymnase Sidi…" />
+        <div class="nearby-list" *ngIf="!loadingVenues && nearbyVenues.length > 0">
+          <button
+            *ngFor="let v of nearbyVenues"
+            class="venue-row"
+            [class.venue-row--selected]="selectedNearbyId === v.id"
+            (click)="selectNearbyVenue(v)"
+            type="button">
+            <span class="venue-row__icon">{{ venueIcon(v) }}</span>
+            <div class="venue-row__body">
+              <span class="venue-row__name">{{ v.name }}</span>
+              <span class="venue-row__addr" *ngIf="v.address">{{ v.address }}</span>
+            </div>
+            <span class="venue-row__dist" *ngIf="v.distance !== undefined">{{ formatDist(v.distance) }}</span>
+            <span class="venue-row__check" *ngIf="selectedNearbyId === v.id">✓</span>
+          </button>
         </div>
 
-        <div class="form-field">
-          <label class="form-label">📅 Date</label>
-          <input class="form-input" type="date" [(ngModel)]="date" [min]="minDate" />
+        <p class="venue-search-err" *ngIf="!loadingVenues && venueSearchErr">
+          {{ venueSearchErr }}
+        </p>
+
+        <!-- Separator -->
+        <div class="venue-sep">
+          <span>ou saisir une adresse manuellement</span>
         </div>
 
-        <div class="form-field">
-          <label class="form-label">🕐 Heure</label>
-          <input class="form-input" type="time" [(ngModel)]="time" (change)="onTimeChange()" />
+        <!-- Manual address autocomplete -->
+        <div class="venue-wrap">
+          <input
+            class="form-input"
+            [class.form-input--found]="venueSelected && !selectedNearbyId"
+            type="text"
+            [(ngModel)]="venueQuery"
+            (focus)="onVenueFocus()"
+            (input)="onVenueInput()"
+            (blur)="onVenueBlur()"
+            placeholder="65 rue Paul Déroulède, 92270 Bois-Colombes…"
+            autocomplete="off" />
+          <span class="venue-spinner" *ngIf="loadingVenue">⏳</span>
+          <span class="venue-check" *ngIf="venueSelected && !selectedNearbyId">✓</span>
+
+          <div class="venue-dropdown" *ngIf="showVenueSuggestions && venueSuggestions.length > 0">
+            <button
+              class="venue-option"
+              *ngFor="let v of venueSuggestions"
+              type="button"
+              (mousedown)="selectVenue(v)">
+              <span class="venue-option__icon">📍</span>
+              <span class="venue-option__label">{{ v.label }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Date / Time row -->
+        <div class="form-grid form-grid--2 form-grid--mt">
+          <div class="form-field">
+            <label class="form-label">📅 Date</label>
+            <input class="form-input" type="date" [(ngModel)]="date" [min]="minDate" (change)="onTimeChange()" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">🕐 Heure</label>
+            <input class="form-input" type="time" [(ngModel)]="time" (change)="onTimeChange()" />
+          </div>
+        </div>
+
+        <!-- Time-until badge -->
+        <div class="time-until-badge time-until-badge--{{ timeUntil?.tier }}"
+             *ngIf="timeUntil">
+          <div class="time-until-badge__left">
+            <span class="time-until-badge__dot"></span>
+            <span class="time-until-badge__label">Commence dans</span>
+          </div>
+          <div class="time-until-badge__center">
+            <span class="time-until-badge__value">{{ timeUntil!.label }}</span>
+          </div>
+          <div class="time-until-badge__right">
+            <span class="time-until-badge__sub">{{ timeUntil!.sublabel }}</span>
+          </div>
         </div>
       </div>
 
@@ -226,8 +375,13 @@
               <span class="preview-card__badge">OUVERT</span>
             </div>
             <h4 class="preview-card__title">{{ title || 'Titre de ta session…' }}</h4>
-            <p class="preview-card__meta">📍 {{ venueName || 'Lieu à définir' }}, {{ selectedCity }}</p>
+            <p class="preview-card__meta">📍 {{ venueName || 'Adresse à définir' }}</p>
             <p class="preview-card__meta">📅 {{ previewDate }}</p>
+            <div class="preview-card__countdown preview-card__countdown--{{ timeUntil?.tier }}"
+                 *ngIf="timeUntil">
+              <span class="preview-card__countdown-dot"></span>
+              <span>Commence dans <strong>{{ timeUntil!.label }}</strong></span>
+            </div>
             <hr class="preview-card__divider" />
             <div class="preview-card__footer">
               <span class="preview-card__level">{{ levelLabel }}</span>

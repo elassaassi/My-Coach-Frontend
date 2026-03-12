@@ -48,6 +48,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent)
       },
       {
+        path: 'profile/:id',
+        loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent)
+      },
+      {
         path: 'messages',
         loadComponent: () => import('./features/messaging/messaging.component').then(m => m.MessagingComponent)
       },

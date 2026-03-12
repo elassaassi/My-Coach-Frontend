@@ -3,100 +3,107 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ActivityService, HighlightService, AuthService } from '@momentum/api-client';
 import { Activity, Highlight } from '@momentum/models';
-import { MnCardComponent, MnBadgeComponent } from '@momentum/ui';
+
+const SPORT_META: Record<string, { emoji: string; label: string; gradient: string }> = {
+  football:   { emoji: '⚽', label: 'Football',   gradient: 'linear-gradient(135deg,#16a34a,#4ade80)' },
+  basketball: { emoji: '🏀', label: 'Basketball', gradient: 'linear-gradient(135deg,#ea580c,#fb923c)' },
+  tennis:     { emoji: '🎾', label: 'Tennis',     gradient: 'linear-gradient(135deg,#2563eb,#60a5fa)' },
+  padel:      { emoji: '🏸', label: 'Padel',      gradient: 'linear-gradient(135deg,#7c3aed,#a78bfa)' },
+  running:    { emoji: '🏃', label: 'Running',    gradient: 'linear-gradient(135deg,#dc2626,#f87171)' },
+  volleyball: { emoji: '🏐', label: 'Volleyball', gradient: 'linear-gradient(135deg,#d97706,#fbbf24)' },
+  natation:   { emoji: '🏊', label: 'Natation',   gradient: 'linear-gradient(135deg,#0891b2,#38bdf8)' },
+  boxe:       { emoji: '🥊', label: 'Boxe',       gradient: 'linear-gradient(135deg,#9f1239,#fb7185)' },
+  cyclisme:   { emoji: '🚴', label: 'Cyclisme',   gradient: 'linear-gradient(135deg,#15803d,#86efac)' },
+  fitness:    { emoji: '💪', label: 'Fitness',    gradient: 'linear-gradient(135deg,#6d28d9,#c084fc)' },
+};
+
+const LEVEL_META: Record<string, { label: string; color: string }> = {
+  BEGINNER:     { label: 'Débutant',      color: '#16a34a' },
+  INTERMEDIATE: { label: 'Intermédiaire', color: '#2563eb' },
+  ADVANCED:     { label: 'Avancé',        color: '#ea580c' },
+  ELITE:        { label: 'Élite',         color: '#7c3aed' },
+};
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, MnCardComponent, MnBadgeComponent],
-  template: `
-    <div class="dashboard">
-      <!-- Header -->
-      <header class="dashboard__header">
-        <div>
-          <h2 class="dashboard__greeting">Bonjour 👋</h2>
-          <p class="dashboard__sub">Que joues-tu aujourd'hui ?</p>
-        </div>
-        <a routerLink="/activities/create" class="btn-primary-sm">+ Créer activité</a>
-      </header>
-
-      <!-- Stats rapides -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-card__value">12</span>
-          <span class="stat-card__label">Activités jouées</span>
-        </div>
-        <div class="stat-card stat-card--accent">
-          <span class="stat-card__value">78</span>
-          <span class="stat-card__label">ProScore</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__value">3</span>
-          <span class="stat-card__label">Man of the Match</span>
-        </div>
-      </div>
-
-      <!-- Activités proches -->
-      <section class="section">
-        <div class="section__header">
-          <h3 class="section__title">Activités ouvertes</h3>
-          <a routerLink="/activities" class="section__link">Voir tout →</a>
-        </div>
-        <div class="activities-grid">
-          <mn-card *ngFor="let a of activities" [clickable]="true" [elevated]="true">
-            <a [routerLink]="['/activities', a.id]" class="activity-item">
-              <div class="activity-item__top">
-                <span class="activity-item__sport">{{ a.sport }}</span>
-                <mn-badge [color]="a.status === 'OPEN' ? 'success' : 'warning'">
-                  {{ a.status === 'OPEN' ? 'Ouvert' : 'Complet' }}
-                </mn-badge>
-              </div>
-              <h4 class="activity-item__title">{{ a.title }}</h4>
-              <p class="activity-item__meta">
-                📍 {{ a.location.city }} · {{ a.scheduledAt | date:'EEE dd MMM, HH:mm' }}
-              </p>
-              <p class="activity-item__spots">
-                {{ a.currentParticipantsCount }}/{{ a.maxParticipants }} joueurs
-              </p>
-            </a>
-          </mn-card>
-        </div>
-      </section>
-
-      <!-- Highlight du jour -->
-      <section class="section" *ngIf="highlightOfDay">
-        <h3 class="section__title">🎬 Highlight du jour</h3>
-        <mn-card [elevated]="true">
-          <div class="highlight-preview">
-            <div class="highlight-preview__media">
-              <span class="highlight-preview__type">{{ highlightOfDay.mediaType }}</span>
-            </div>
-            <div class="highlight-preview__info">
-              <p class="highlight-preview__caption">{{ highlightOfDay.caption }}</p>
-              <span class="highlight-preview__likes">❤️ {{ highlightOfDay.likeCount }} likes</span>
-            </div>
-          </div>
-        </mn-card>
-      </section>
-    </div>
-  `,
-  styleUrls: ['./dashboard.component.scss']
+  imports: [CommonModule, RouterLink],
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.scss'],
 })
 export class DashboardComponent implements OnInit {
-  private readonly activityService = inject(ActivityService);
+  private readonly activityService  = inject(ActivityService);
   private readonly highlightService = inject(HighlightService);
+  private readonly authService      = inject(AuthService);
 
-  activities: Activity[] = [];
+  activities: Activity[]   = [];
   highlightOfDay: Highlight | null = null;
+  loading = true;
+
+  get currentUserId() { return this.authService.currentUserId; }
 
   ngOnInit(): void {
     this.activityService.search({ status: 'OPEN', size: 6 }).subscribe({
-      next: (data) => this.activities = data,
-      error: () => {}
+      next: (data) => { this.activities = data ?? []; this.loading = false; },
+      error: () => { this.loading = false; },
     });
     this.highlightService.getHighlightOfDay().subscribe({
-      next: (h) => this.highlightOfDay = h,
-      error: () => {}
+      next: (h) => this.highlightOfDay = h ?? null,
+      error: () => {},
     });
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  sportMeta(sport: string) {
+    return SPORT_META[sport] ?? { emoji: '🏅', label: sport, gradient: 'linear-gradient(135deg,#475569,#94a3b8)' };
+  }
+
+  levelMeta(level: string) {
+    return LEVEL_META[level] ?? { label: level, color: '#64748b' };
+  }
+
+  fillPct(a: Activity): number {
+    if (!a.maxParticipants) return 0;
+    return Math.min(100, Math.round((a.currentParticipantsCount / a.maxParticipants) * 100));
+  }
+
+  spotsLeft(a: Activity): number {
+    return Math.max(0, a.maxParticipants - a.currentParticipantsCount);
+  }
+
+  spotsLabel(a: Activity): string {
+    const n = this.spotsLeft(a);
+    if (n === 0) return 'Complet';
+    return `${n} place${n > 1 ? 's' : ''} restante${n > 1 ? 's' : ''}`;
+  }
+
+  timeUntil(dateStr: string): string {
+    const diff = new Date(dateStr).getTime() - Date.now();
+    if (diff < 0) return 'En cours';
+    const h = Math.floor(diff / 3_600_000);
+    const d = Math.floor(diff / 86_400_000);
+    if (h < 1)  return 'Dans moins d\'1h';
+    if (h < 24) return `Dans ${h}h`;
+    if (d === 1) return 'Demain';
+    const days = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    const dt = new Date(dateStr);
+    return `${days[dt.getDay()]} ${dt.getDate()} — ${String(dt.getHours()).padStart(2,'0')}h${String(dt.getMinutes()).padStart(2,'0')}`;
+  }
+
+  isSoon(dateStr: string): boolean {
+    const diff = new Date(dateStr).getTime() - Date.now();
+    return diff > 0 && diff < 3 * 3_600_000;
+  }
+
+  isUrgent(a: Activity): boolean {
+    return this.spotsLeft(a) <= 2 && this.spotsLeft(a) > 0;
+  }
+
+  avatarHue(id: string | null | undefined): number {
+    if (!id) return 210;
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffffff;
+    return Math.abs(h) % 360;
   }
 }

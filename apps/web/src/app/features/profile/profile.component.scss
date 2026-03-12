@@ -30,7 +30,7 @@ $bg:        #F8F9FA;
   padding: var(--space-6) var(--space-5) var(--space-16);
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 // ── Hero card ─────────────────────────────────────────────────────────────────
@@ -380,6 +380,17 @@ $bg:        #F8F9FA;
     padding-left: 0;
     &:hover { text-decoration: underline; }
   }
+
+  &__count {
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--clr-text-muted);
+    background: var(--clr-surface-2);
+    border-radius: var(--radius-full);
+    padding: 1px 8px;
+    margin-left: var(--space-2);
+    border-left: none;
+  }
 }
 
 // ── Sports ────────────────────────────────────────────────────────────────────
@@ -482,49 +493,42 @@ $bg:        #F8F9FA;
 .mini-activities {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
+
+  &--scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-bottom: var(--space-2);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,.12) transparent;
+  }
 }
 
 .mini-card {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-4);
+  min-height: 64px;
   background: $surface;
   border: 1.5px solid var(--clr-border-light);
+  border-left: 3px solid transparent;
   border-radius: var(--radius-lg);
   text-decoration: none;
   color: inherit;
-  transition: all var(--transition-fast);
+  transition: border-color 0.18s, box-shadow 0.18s;
   position: relative;
-  overflow: hidden;
-
-  // Slide-in orange accent on hover
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: $orange;
-    transform: scaleY(0);
-    transition: transform var(--transition-fast);
-    border-radius: 0 2px 2px 0;
-  }
 
   &:hover {
-    border-color: rgba(255,58,0,.25);
-    box-shadow: 0 4px 16px rgba(255,58,0,.1);
-    transform: translateX(4px);
-
-    &::before { transform: scaleY(1); }
+    border-color: rgba(255,58,0,.3);
+    border-left-color: $orange;
+    box-shadow: 0 2px 12px rgba(255,58,0,.08);
   }
 
   &__emoji {
-    font-size: 1.5rem;
-    width: 44px;
-    height: 44px;
+    font-size: 1.4rem;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -538,6 +542,7 @@ $bg:        #F8F9FA;
     flex-direction: column;
     flex: 1;
     min-width: 0;
+    gap: 3px;
   }
 
   &__title {
@@ -558,10 +563,39 @@ $bg:        #F8F9FA;
     white-space: nowrap;
   }
 
-  &--past {
-    opacity: .7;
-    &:hover { opacity: .9; }
+  &__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
   }
+
+  &__status {
+    font-size: 11px;
+    font-weight: var(--fw-semibold);
+    padding: 2px 9px;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+    background: #e0f2fe; color: #0369a1;
+
+    &[data-status="OPEN"]      { background: #dcfce7; color: #15803d; }
+    &[data-status="FULL"]      { background: #fef3c7; color: #92400e; }
+    &[data-status="ONGOING"]   { background: #fee2e2; color: #991b1b; }
+    &[data-status="COMPLETED"] { background: #f1f5f9; color: #475569; }
+    &[data-status="CANCELLED"] { background: #fce7f3; color: #9d174d; }
+  }
+
+  &--past {
+    opacity: .8;
+    &:hover { opacity: 1; }
+  }
+}
+
+.empty-muted {
+  font-size: var(--text-sm);
+  color: var(--clr-text-muted);
+  padding: var(--space-2) 0;
 }
 
 // ── Empty states ──────────────────────────────────────────────────────────────

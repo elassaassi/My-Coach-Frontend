@@ -1,29 +1,35 @@
 <!-- ── Header ──────────────────────────────────────────────────────────────── -->
-<div class="feed-wrap">
+<div class="feed-wrap" (click)="closeMenu()">
   <header class="feed-header">
     <div>
       <h2 class="feed-header__title">🎬 Fil d'actualités</h2>
       <p class="feed-header__sub">Photos & vidéos de la communauté</p>
     </div>
-    <button class="btn btn--primary btn--sm" (click)="openModal()">+ Publier</button>
+    <div class="feed-header__actions">
+      <div class="feed-tabs">
+        <button class="feed-tab" [class.feed-tab--active]="!myFeedOnly" (click)="myFeedOnly = false">Tous</button>
+        <button class="feed-tab" [class.feed-tab--active]="myFeedOnly"  (click)="myFeedOnly = true">Mes posts</button>
+      </div>
+      <button class="btn btn--primary btn--sm" (click)="openModal()">+ Publier</button>
+    </div>
   </header>
 
   <!-- ── Highlight du jour ──────────────────────────────────────────────── -->
   <div *ngIf="highlightOfDay" class="hod-banner">
     <div class="hod-banner__label">🏆 Highlight du jour</div>
     <div class="hod-banner__card">
-      <!-- Media -->
-      <div class="media-box media-box--hod">
-        <img *ngIf="isImage(highlightOfDay.mediaUrl)"
+      <div class="media-box media-box--hod media-box--clickable" (click)="openViewer(highlightOfDay)">
+        <img *ngIf="highlightOfDay.mediaType === 'PHOTO'"
              [src]="highlightOfDay.mediaUrl"
              class="media-box__img"
              alt="highlight"
              (error)="$any($event.target).style.display='none'" />
-        <div *ngIf="!isImage(highlightOfDay.mediaUrl)" class="media-box__video-placeholder">
-          <span class="media-box__play">▶</span>
+        <div *ngIf="highlightOfDay.mediaType !== 'PHOTO'" class="media-box__video-thumb">
+          <video [src]="highlightOfDay.mediaUrl" preload="metadata" muted playsinline
+                 class="media-box__img"></video>
+          <span class="media-box__play-overlay">▶</span>
         </div>
       </div>
-      <!-- Info -->
       <div class="hod-banner__info">
         <span class="sport-chip">{{ sportMeta(highlightOfDay.sport).emoji }} {{ sportMeta(highlightOfDay.sport).label }}</span>
         <p class="hod-banner__caption">{{ highlightOfDay.caption }}</p>
@@ -33,6 +39,7 @@
             {{ avatarInitial(highlightOfDay.publisherId) }}
           </div>
           <span class="like-count">❤️ {{ highlightOfDay.likeCount }}</span>
+          <span *ngIf="highlightOfDay.commentCount" class="like-count">💬 {{ highlightOfDay.commentCount }}</span>
           <span class="time-ago">{{ timeAgo(highlightOfDay.publishedAt) }}</span>
         </div>
       </div>
@@ -61,50 +68,266 @@
     <div *ngFor="let h of feedWithoutHod()" class="highlight-card">
 
       <!-- Media -->
-      <div class="media-box">
-        <img *ngIf="isImage(h.mediaUrl)"
+      <div class="media-box media-box--clickable" (click)="openViewer(h)">
+        <img *ngIf="h.mediaType === 'PHOTO'"
              [src]="h.mediaUrl"
              class="media-box__img"
              alt="highlight"
              (error)="$any($event.target).style.display='none'" />
-        <div *ngIf="!isImage(h.mediaUrl)" class="media-box__video-placeholder">
-          <span class="media-box__play">▶</span>
-          <span class="media-box__type">{{ h.mediaType }}</span>
+        <div *ngIf="h.mediaType !== 'PHOTO'" class="media-box__video-thumb">
+          <video [src]="h.mediaUrl" preload="metadata" muted playsinline
+                 class="media-box__img"></video>
+          <span class="media-box__play-overlay">▶</span>
         </div>
         <span *ngIf="h.isHighlightOfDay" class="media-box__hod-badge">🏆</span>
       </div>
 
       <!-- Card body -->
       <div class="highlight-card__body">
-        <!-- Sport + time -->
         <div class="highlight-card__top">
           <span class="sport-chip sport-chip--sm">
             {{ sportMeta(h.sport).emoji }} {{ sportMeta(h.sport).label }}
           </span>
-          <span class="time-ago">{{ timeAgo(h.publishedAt) }}</span>
+          <div class="card-top-right">
+            <span class="time-ago">{{ timeAgo(h.publishedAt) }}</span>
+
+            <!-- ⋯ Context menu trigger -->
+            <div *ngIf="canDelete(h)" class="ctx-menu-wrap" (click)="$event.stopPropagation()">
+              <button class="ctx-btn" (click)="openMenu(h.id, $event)" aria-label="Options">⋯</button>
+              <div *ngIf="menuOpenId === h.id" class="ctx-menu">
+                <button class="ctx-item" (click)="startEdit(h); menuOpenId = null">✏️ Modifier</button>
+                <button class="ctx-item ctx-item--archive"
+                        [disabled]="archivingId === h.id"
+                        (click)="archivePost(h)">🗄️ Archiver</button>
+                <button class="ctx-item ctx-item--danger"
+                        (click)="requestDelete(h); menuOpenId = null">🗑️ Supprimer</button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Caption -->
         <p class="highlight-card__caption">{{ h.caption }}</p>
+        <p *ngIf="h.editedAt" class="edited-badge">· modifié</p>
 
-        <!-- Footer: avatar + likes -->
         <div class="highlight-card__footer">
           <div class="avatar avatar--xs"
                [style.background]="'hsl(' + avatarHue(h.publisherId) + ',60%,45%)'">
             {{ avatarInitial(h.publisherId) }}
           </div>
 
-          <button class="like-btn"
-                  [class.like-btn--liked]="isLiked(h.id)"
-                  [disabled]="likingId === h.id"
-                  (click)="toggleLike(h)"
-                  aria-label="Liker">
-            <span class="like-btn__heart">{{ isLiked(h.id) ? '❤️' : '🤍' }}</span>
-            <span class="like-btn__count">{{ h.likeCount }}</span>
-          </button>
+          <div class="card-actions">
+            <button class="like-btn"
+                    [class.like-btn--liked]="isLiked(h.id)"
+                    [disabled]="likingId === h.id"
+                    (click)="toggleLike(h)"
+                    aria-label="Liker">
+              <span class="like-btn__heart">{{ isLiked(h.id) ? '❤️' : '🤍' }}</span>
+              <span class="like-btn__count">{{ h.likeCount }}</span>
+            </button>
+
+            <button class="comment-count-btn" (click)="openViewer(h)" aria-label="Commenter">
+              <span>💬</span>
+              <span class="comment-count-btn__n">{{ h.commentCount ?? 0 }}</span>
+            </button>
+
+            <!-- Delete confirm (on card) -->
+            <ng-container *ngIf="deleteConfirmId === h.id">
+              <button class="delete-btn delete-btn--confirming"
+                      [disabled]="deletingId === h.id"
+                      (click)="$event.stopPropagation(); confirmDelete(h)">⚠️ Confirmer</button>
+              <button class="delete-btn delete-btn--cancel"
+                      (click)="$event.stopPropagation(); cancelDelete()">✕</button>
+            </ng-container>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     VIEWER (LIGHTBOX) — layout Instagram : media | sidebar
+══════════════════════════════════════════════════════════════════════════ -->
+<ng-container *ngIf="viewHighlight">
+  <div class="modal-backdrop" (click)="closeViewer(); cancelEdit()"></div>
+
+  <div class="viewer" role="dialog" aria-label="Voir le highlight">
+    <button class="viewer__close" (click)="closeViewer(); cancelEdit()">✕</button>
+
+    <!-- Media -->
+    <div class="viewer__media">
+      <img *ngIf="viewHighlight.mediaType === 'PHOTO'"
+           [src]="viewHighlight.mediaUrl"
+           class="viewer__img"
+           alt="highlight" />
+      <video *ngIf="viewHighlight.mediaType !== 'PHOTO'"
+             class="viewer__video"
+             controls playsinline
+             [src]="viewHighlight.mediaUrl"></video>
+    </div>
+
+    <!-- Sidebar : info + comments -->
+    <div class="viewer__sidebar">
+
+      <!-- Info -->
+      <div class="viewer__info">
+        <div class="viewer__info-top">
+          <button class="avatar avatar--sm avatar--btn"
+                  [style.background]="'hsl(' + avatarHue(viewHighlight.publisherId) + ',60%,45%)'"
+                  (click)="goToProfile(viewHighlight.publisherId)"
+                  title="Voir le profil">
+            {{ avatarInitial(viewHighlight.publisherId) }}
+          </button>
+          <div class="viewer__info-meta">
+            <!-- Edit mode: sport selector -->
+            <ng-container *ngIf="editingHighlight?.id === viewHighlight.id; else sportDisplay">
+              <div class="edit-sport-pills">
+                <button *ngFor="let s of allSports"
+                        class="edit-sport-pill"
+                        [class.edit-sport-pill--active]="editSport === s.id"
+                        (click)="editSport = s.id"
+                        type="button">
+                  {{ s.emoji }} {{ s.label }}
+                </button>
+              </div>
+            </ng-container>
+            <ng-template #sportDisplay>
+              <span class="sport-chip sport-chip--sm">
+                {{ sportMeta(viewHighlight.sport).emoji }} {{ sportMeta(viewHighlight.sport).label }}
+              </span>
+            </ng-template>
+            <span class="time-ago">{{ timeAgo(viewHighlight.publishedAt) }}
+              <span *ngIf="viewHighlight.editedAt" class="edited-badge">· modifié</span>
+            </span>
+          </div>
+
+          <!-- ⋯ menu in viewer -->
+          <div *ngIf="canDelete(viewHighlight) && !editingHighlight"
+               class="ctx-menu-wrap" (click)="$event.stopPropagation()">
+            <button class="ctx-btn" (click)="openMenu('viewer', $event)" aria-label="Options">⋯</button>
+            <div *ngIf="menuOpenId === 'viewer'" class="ctx-menu ctx-menu--left">
+              <button class="ctx-item" (click)="startEdit(viewHighlight)">✏️ Modifier la légende</button>
+              <button class="ctx-item ctx-item--archive"
+                      [disabled]="archivingId === viewHighlight.id"
+                      (click)="archivePost(viewHighlight); closeViewer()">🗄️ Archiver</button>
+              <button class="ctx-item ctx-item--danger"
+                      (click)="requestDelete(viewHighlight); menuOpenId = null">🗑️ Supprimer</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Caption — normal or edit mode -->
+        <ng-container *ngIf="editingHighlight?.id === viewHighlight.id; else captionDisplay">
+          <div class="edit-caption-wrap">
+            <textarea class="edit-caption-field"
+                      [(ngModel)]="editCaption"
+                      maxlength="500"
+                      rows="3"
+                      placeholder="Légende…"
+                      autofocus></textarea>
+            <div class="edit-caption-meta">
+              <span class="edit-char-counter" [class.edit-char-counter--warn]="editCaption.length > 400">
+                {{ editCaption.length }}/500
+              </span>
+              <p *ngIf="editError" class="edit-error">⚠️ {{ editError }}</p>
+            </div>
+            <div class="edit-actions">
+              <button class="btn btn--ghost btn--sm" (click)="cancelEdit()" [disabled]="savingEdit">✕ Annuler</button>
+              <button class="btn btn--primary btn--sm" (click)="saveEdit()" [disabled]="savingEdit || !editCaption.trim()">
+                {{ savingEdit ? '…' : '✓ Sauvegarder' }}
+              </button>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #captionDisplay>
+          <p class="viewer__caption">{{ viewHighlight.caption }}</p>
+        </ng-template>
+
+        <div class="viewer__footer">
+          <button class="like-btn"
+                  [class.like-btn--liked]="isLiked(viewHighlight.id)"
+                  [disabled]="likingId === viewHighlight.id"
+                  (click)="toggleLike(viewHighlight)"
+                  aria-label="Liker">
+            <span class="like-btn__heart">{{ isLiked(viewHighlight.id) ? '❤️' : '🤍' }}</span>
+            <span class="like-btn__count">{{ viewHighlight.likeCount }}</span>
+          </button>
+          <span class="viewer__comment-stat">💬 {{ viewHighlight.commentCount ?? comments.length }}</span>
+
+          <!-- Delete confirm in viewer -->
+          <ng-container *ngIf="deleteConfirmId === viewHighlight.id">
+            <button class="delete-btn delete-btn--confirming"
+                    [disabled]="deletingId === viewHighlight.id"
+                    (click)="confirmDelete(viewHighlight)">⚠️ Confirmer</button>
+            <button class="delete-btn delete-btn--cancel" (click)="cancelDelete()">✕ Annuler</button>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Comments list -->
+      <div class="viewer__comments-list">
+
+        <!-- Loading -->
+        <div *ngIf="commentsLoading" class="comments-loading">
+          <div class="comment-skeleton" *ngFor="let _ of [1,2,3]">
+            <div class="skeleton skeleton--avatar"></div>
+            <div style="flex:1">
+              <div class="skeleton skeleton--line" style="width:40%;margin-bottom:6px"></div>
+              <div class="skeleton skeleton--line" style="width:80%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty -->
+        <div *ngIf="!commentsLoading && comments.length === 0" class="comments-empty">
+          <span>💬</span>
+          <p>Aucun commentaire. Sois le premier !</p>
+        </div>
+
+        <!-- Comment items -->
+        <div *ngFor="let c of comments" class="comment-item">
+          <div class="comment-item__avatar"
+               [style.background]="'hsl(' + avatarHue(c.authorId) + ',60%,45%)'">
+            {{ avatarInitial(c.authorId) }}
+          </div>
+          <div class="comment-item__body">
+            <span class="comment-item__author">{{ c.authorId.slice(0,8) }}</span>
+            <p class="comment-item__content">{{ c.content }}</p>
+            <span class="comment-item__time">{{ timeAgo(c.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comment input -->
+      <div class="viewer__comment-input">
+        <div class="comment-input-avatar"
+             [style.background]="'hsl(' + avatarHue(currentUserId) + ',60%,45%)'">
+          {{ avatarInitial(currentUserId) }}
+        </div>
+        <input class="comment-input-field"
+               [(ngModel)]="newComment"
+               placeholder="Ajouter un commentaire…"
+               maxlength="500"
+               (keyup.enter)="submitComment()" />
+        <button class="comment-send-btn"
+                [disabled]="!newComment.trim() || submittingComment"
+                (click)="submitComment()">
+          {{ submittingComment ? '…' : '↑' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ARCHIVE UNDO TOAST
+══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="archivedHighlight" class="archive-toast" role="status">
+  <span class="archive-toast__icon">🗄️</span>
+  <span class="archive-toast__msg">Publication archivée</span>
+  <button class="archive-toast__undo" (click)="undoArchive()">Annuler</button>
+  <div class="archive-toast__bar">
+    <div class="archive-toast__bar-fill" [style.width.%]="archiveProgress"></div>
   </div>
 </div>
 
@@ -126,7 +349,6 @@
       <div class="form-group">
         <label class="form-label">Média</label>
 
-        <!-- Drop zone -->
         <div class="upload-zone"
              [class.upload-zone--drag]="dragOver"
              [class.upload-zone--filled]="selectedFile || previewUrl"
@@ -135,36 +357,53 @@
              (dragleave)="dragOver = false"
              (drop)="onDrop($event)">
 
-          <!-- Preview (image ou thumbnail vidéo) -->
-          <img *ngIf="previewUrl" [src]="previewUrl" class="upload-preview" alt="preview">
+          <img *ngIf="previewUrl"
+               [src]="previewUrl"
+               [style.filter]="previewFilterStyle"
+               class="upload-preview"
+               alt="preview">
 
-          <!-- Vidéo sélectionnée, thumbnail en cours de génération -->
           <div *ngIf="selectedFile && !previewUrl" class="upload-video-info">
             <span>🎬</span>
             <span>{{ selectedFile.name }}</span>
             <span class="upload-hint">Génération du thumbnail…</span>
           </div>
 
-          <!-- Placeholder vide -->
           <div *ngIf="!selectedFile" class="upload-placeholder">
             <span class="upload-icon">📎</span>
             <p>Glisser ici ou <b>cliquer pour choisir</b></p>
             <span class="upload-hint">JPG · PNG · GIF · MP4 · MOV — max 50 Mo</span>
           </div>
 
-          <!-- Badge vidéo sur le thumbnail -->
           <span *ngIf="selectedFile && publishType === 'VIDEO' && previewUrl"
                 class="upload-video-badge">🎬</span>
 
-          <!-- Bouton supprimer -->
           <button *ngIf="selectedFile" class="upload-remove"
                   (click)="$event.stopPropagation(); removeFile()"
                   aria-label="Supprimer">✕</button>
         </div>
 
-        <!-- Hidden file input -->
         <input #fileInput type="file" accept="image/*,video/*"
                style="display:none" (change)="onFileSelect($event)">
+      </div>
+
+      <!-- ── Filtres (images uniquement) ────────────────────────────────── -->
+      <div *ngIf="previewUrl && publishType === 'PHOTO'" class="filter-section">
+        <label class="form-label">Filtre</label>
+        <div class="filter-strip">
+          <button *ngFor="let f of filters"
+                  class="filter-thumb"
+                  [class.filter-thumb--active]="selectedFilter.id === f.id"
+                  (click)="selectFilter(f)"
+                  type="button">
+            <div class="filter-thumb__frame">
+              <img [src]="previewUrl" [style.filter]="f.css === 'none' ? '' : f.css"
+                   class="filter-thumb__img" alt="">
+              <span *ngIf="selectedFilter.id === f.id" class="filter-thumb__check">✓</span>
+            </div>
+            <span class="filter-thumb__name">{{ f.name }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- ── OR separator + URL manuelle ────────────────────────────────── -->

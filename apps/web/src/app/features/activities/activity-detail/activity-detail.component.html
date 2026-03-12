@@ -24,7 +24,7 @@
 <div *ngIf="activity && !loading && !error" class="detail-wrap">
 
   <!-- Back -->
-  <a routerLink="/activities" class="back-link">← Retour</a>
+  <button class="back-link" (click)="goBack()" type="button">← Retour</button>
 
   <!-- Hero card -->
   <div class="hero">
@@ -60,10 +60,90 @@
     </div>
   </div>
 
+  <!-- ── Map + Itinerary ─────────────────────────────────────────────── -->
+  <div class="map-section" *ngIf="mapUrl">
+
+    <!-- OSM embed -->
+    <div class="map-embed">
+      <iframe [src]="mapUrl"
+              class="map-embed__frame"
+              frameborder="0" scrolling="no"
+              marginheight="0" marginwidth="0"
+              title="Carte du terrain">
+      </iframe>
+      <div class="map-embed__label">
+        📍 {{ activity.location.venueName || activity.location.city }}
+      </div>
+    </div>
+
+    <!-- Itinerary panel -->
+    <div class="itinerary">
+
+      <!-- Location button -->
+      <div class="itinerary__loc-row">
+        <button class="loc-btn"
+                [class.loc-btn--loading]="locating"
+                [class.loc-btn--found]="userLat != null"
+                (click)="detectLocation()"
+                type="button">
+          <span class="loc-btn__icon">{{ userLat != null ? '✓' : '📍' }}</span>
+          <span class="loc-btn__text">
+            <ng-container *ngIf="locating">Localisation…</ng-container>
+            <ng-container *ngIf="!locating && userLat == null">Utiliser ma position actuelle</ng-container>
+            <ng-container *ngIf="!locating && userLat != null">
+              <span class="loc-btn__addr">{{ userAddress || 'Position détectée' }}</span>
+              <span class="loc-btn__reload">Recharger</span>
+            </ng-container>
+          </span>
+        </button>
+        <p class="itinerary__loc-error" *ngIf="locError">⚠️ {{ locError }}</p>
+      </div>
+
+      <!-- Travel mode tabs + results -->
+      <div class="itinerary__results" *ngIf="userLat != null">
+
+        <!-- Mode tabs -->
+        <div class="travel-tabs">
+          <button class="travel-tab" [class.travel-tab--active]="activeTravelMode === 'car'"
+                  (click)="setTravelMode('car')" type="button">
+            🚗 Voiture
+          </button>
+          <button class="travel-tab" [class.travel-tab--active]="activeTravelMode === 'bike'"
+                  (click)="setTravelMode('bike')" type="button">
+            🚲 Vélo
+          </button>
+          <button class="travel-tab" [class.travel-tab--active]="activeTravelMode === 'walk'"
+                  (click)="setTravelMode('walk')" type="button">
+            🚶 À pied
+          </button>
+        </div>
+
+        <!-- Route info -->
+        <div class="travel-info">
+          <ng-container *ngIf="activeRoute">
+            <span class="travel-info__duration">{{ activeRoute.duration }}</span>
+            <span class="travel-info__distance">· {{ activeRoute.distance }}</span>
+          </ng-container>
+          <ng-container *ngIf="!activeRoute">
+            <div class="skel skel--sm" style="width:120px;height:18px"></div>
+          </ng-container>
+        </div>
+
+        <!-- Open in Google Maps -->
+        <button class="directions-btn" (click)="openDirections()" type="button">
+          🗺️ Ouvrir dans Google Maps
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Countdown + spots -->
-  <div class="urgency-strip">
+  <div class="urgency-strip urgency-strip--{{ timeUntilTier }}">
     <div class="urgency-strip__countdown">
-      <span class="urgency-strip__label">Commence dans</span>
+      <div class="urgency-strip__tier-row">
+        <span class="urgency-strip__dot"></span>
+        <span class="urgency-strip__label">Commence dans</span>
+      </div>
       <span class="urgency-strip__value">{{ countdown }}</span>
     </div>
 
@@ -78,7 +158,7 @@
     <!-- Spots progress bar -->
     <div class="spots-bar">
       <div class="spots-bar__fill"
-           [style.width.%]="(activity.currentParticipantsCount / activity.maxParticipants) * 100"
+           [style.width.%]="isFull ? 100 : (activity.currentParticipantsCount / activity.maxParticipants) * 100"
            [class.spots-bar__fill--urgent]="spotsUrgent"
            [class.spots-bar__fill--full]="isFull">
       </div>
@@ -92,6 +172,12 @@
     <div *ngIf="isOrganizer" class="organizer-badge">
       👑 Tu organises cette session
     </div>
+    <button *ngIf="canCompleteMatch"
+            class="btn btn--complete"
+            (click)="completeMatch()"
+            [disabled]="completing">
+      {{ completing ? 'Finalisation...' : '🏁 Terminer le match' }}
+    </button>
 
     <!-- Participant: leave -->
     <div *ngIf="!isOrganizer && isParticipant" class="joined-state">
@@ -135,11 +221,11 @@
            [title]="'Voir le profil'">
         <div class="participant-chip__avatar"
              [style.background]="'hsl(' + avatarHue(p.userId) + ',65%,50%)'">
-          {{ participantInitial(p.userId) }}
+          {{ participantInitial(p) }}
         </div>
         <div class="participant-chip__info">
           <span class="participant-chip__name">
-            Joueur {{ i + 1 }}
+            {{ participantDisplayName(p, i) }}
             <span *ngIf="p.userId === activity.organizerId" class="participant-chip__crown">👑</span>
           </span>
           <span class="participant-chip__joined">Inscrit {{ p.joinedAt | date:'dd/MM' }}</span>
@@ -169,6 +255,25 @@
       <span class="section-title__count">{{ messages.length }}</span>
     </h3>
 
+    <!-- Feuille de match complète (tous les joueurs inscrits) -->
+    <div *ngIf="isMatchSheetFull" class="chat-system-banner chat-system-banner--full">
+      <span class="chat-system-banner__icon">✅</span>
+      <div class="chat-system-banner__body">
+        <strong>Feuille de match complète !</strong>
+        <span>Tous les joueurs sont inscrits — rendez-vous sur le terrain.</span>
+      </div>
+    </div>
+
+    <!-- Match terminé (COMPLETED) -->
+    <div *ngIf="isMatchCompleted" class="chat-system-banner">
+      <span class="chat-system-banner__icon">🏁</span>
+      <div class="chat-system-banner__body">
+        <strong>Match terminé !</strong>
+        <span>La feuille de match est complète — évalue tes coéquipiers pour enrichir leur ProScore.</span>
+      </div>
+      <a routerLink="/ratings" class="chat-system-banner__cta">Évaluer →</a>
+    </div>
+
     <!-- Not member notice -->
     <div *ngIf="!canChat" class="chat-locked">
       🔒 Rejoins la session pour accéder au chat des participants.
@@ -186,9 +291,10 @@
         <div *ngIf="!isOwnMessage(msg)"
              class="chat-msg__avatar"
              [style.background]="'hsl(' + avatarHue(msg.senderId) + ',65%,45%)'">
-          {{ messageSenderInitial(msg.senderId) }}
+          {{ messageSenderInitial(msg) }}
         </div>
         <div class="chat-msg__bubble">
+          <span *ngIf="!isOwnMessage(msg)" class="chat-msg__sender">{{ messageSenderName(msg) }}</span>
           <span class="chat-msg__text">{{ msg.content }}</span>
           <span class="chat-msg__time">{{ msg.sentAt | date:'HH:mm' }}</span>
         </div>
@@ -198,8 +304,8 @@
     <!-- Chat error -->
     <div *ngIf="chatError" class="chat-error" aria-live="polite">⚠️ {{ chatError }}</div>
 
-    <!-- Chat input -->
-    <div *ngIf="canChat" class="chat-input-row">
+    <!-- Chat input — hidden when match is completed -->
+    <div *ngIf="canChat && !isMatchCompleted" class="chat-input-row">
       <textarea
         class="chat-input"
         [(ngModel)]="chatInput"

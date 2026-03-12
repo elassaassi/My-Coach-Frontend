@@ -1,13 +1,18 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { forkJoin, catchError, of } from 'rxjs';
 import { ActivityService, UserService, RatingService } from '@momentum/api-client';
 import { AuthService } from '@momentum/api-client';
-import { Activity, ActivityMessage, User } from '@momentum/models';
+import { Activity, ActivityMessage, Participant, User } from '@momentum/models';
 import { PlayerStats } from '@momentum/models';
 import { MnBadgeComponent } from '@momentum/ui';
+
+interface TravelRoute { duration: string; distance: string; }
+type TravelMode = 'car' | 'bike' | 'walk';
 
 const SPORT_META: Record<string, { emoji: string; label: string }> = {
   football:   { emoji: '⚽', label: 'Football'   },
@@ -37,15 +42,19 @@ const LEVEL_LABELS: Record<string, string> = {
 export class ActivityDetailComponent implements OnInit, OnDestroy {
   private readonly route           = inject(ActivatedRoute);
   private readonly router          = inject(Router);
+  private readonly location        = inject(Location);
   private readonly activityService = inject(ActivityService);
   private readonly authService     = inject(AuthService);
   private readonly userService     = inject(UserService);
   private readonly ratingService   = inject(RatingService);
+  private readonly http            = inject(HttpClient);
+  private readonly sanitizer       = inject(DomSanitizer);
 
   activity: Activity | null = null;
   loading  = true;
   error    = false;
-  joining  = false;
+  joining   = false;
+  completing = false;
 
   // Countdown
   countdown = '';
@@ -60,12 +69,24 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   playerPanelStats: PlayerStats | null = null;
   playerPanelLoading = false;
 
+  // ── Map & itinerary ────────────────────────────────────────────────────
+  mapUrl: SafeResourceUrl | null = null;
+  userLat: number | null = null;
+  userLon: number | null = null;
+  userAddress   = '';
+  locating      = false;
+  locError      = '';
+  activeTravelMode: TravelMode = 'car';
+  travelRoutes: Partial<Record<TravelMode, TravelRoute>> = {};
+  loadingTravel = false;
+
   // ── Chat ───────────────────────────────────────────────────────────────
   messages: ActivityMessage[] = [];
   chatInput    = '';
   sending      = false;
   chatError    = '';
-  private chatInterval: ReturnType<typeof setInterval> | null = null;
+  private chatInterval:     ReturnType<typeof setInterval> | null = null;
+  private activityInterval: ReturnType<typeof setInterval> | null = null;
 
   get currentUserId(): string | null { return this.authService.currentUserId; }
 
@@ -86,7 +107,9 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   }
 
   get spotsUrgent(): boolean { return this.spotsLeft <= 2 && this.spotsLeft > 0; }
-  get isFull(): boolean { return this.spotsLeft <= 0; }
+  get isFull(): boolean {
+    return this.spotsLeft <= 0 || this.activity?.status === 'FULL';
+  }
 
   get statusColor(): 'success' | 'warning' | 'error' | 'neutral' {
     const s = this.activity?.status;
@@ -108,6 +131,14 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
 
   sportMeta(sport: string) { return SPORT_META[sport] ?? { emoji: '🏅', label: sport }; }
 
+  goBack(): void {
+    if (this.location.getState() && (this.location.getState() as any).navigationId > 1) {
+      this.location.back();
+    } else {
+      this.router.navigate(['/activities']);
+    }
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) { this.router.navigate(['/activities']); return; }
@@ -116,6 +147,7 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
       next: (a) => {
         this.activity = a;
         this.loading  = false;
+        this.mapUrl   = this.buildMapUrl(a.location.latitude, a.location.longitude);
         this.startCountdown();
         this.loadChat();
         this.startChatPolling();
@@ -125,8 +157,9 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.countdownInterval) clearInterval(this.countdownInterval);
-    if (this.chatInterval) clearInterval(this.chatInterval);
+    if (this.countdownInterval)   clearInterval(this.countdownInterval);
+    if (this.chatInterval)        clearInterval(this.chatInterval);
+    if (this.activityInterval)    clearInterval(this.activityInterval);
   }
 
   join(): void {
@@ -159,6 +192,18 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  get timeUntilTier(): 'now' | 'soon' | 'today' | 'week' | 'future' | 'past' {
+    if (!this.activity) return 'future';
+    const diff = new Date(this.activity.scheduledAt).getTime() - Date.now();
+    if (diff <= 0) return 'past';
+    const h = diff / 3_600_000;
+    if (h < 2)  return 'now';
+    if (h < 12) return 'soon';
+    if (h < 24) return 'today';
+    if (h < 168) return 'week';
+    return 'future';
+  }
+
   private startCountdown(): void {
     const update = () => {
       if (!this.activity) return;
@@ -173,8 +218,16 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     this.countdownInterval = setInterval(update, 60_000);
   }
 
-  participantInitial(userId: string): string {
-    return userId.slice(0, 2).toUpperCase();
+  participantInitial(p: Participant): string {
+    if (p.firstName && p.lastName) return (p.firstName[0] + p.lastName[0]).toUpperCase();
+    if (p.firstName) return p.firstName.slice(0, 2).toUpperCase();
+    return p.userId.slice(0, 2).toUpperCase();
+  }
+
+  participantDisplayName(p: Participant, index: number): string {
+    if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName[0]}.`;
+    if (p.firstName) return p.firstName;
+    return `Joueur ${index + 1}`;
   }
 
   avatarHue(userId: string): number {
@@ -183,10 +236,217 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     return Math.abs(h) % 360;
   }
 
-  openMaps(): void {
+  private get participantMap(): Map<string, Participant> {
+    const map = new Map<string, Participant>();
+    this.activity?.participants.forEach(p => map.set(p.userId, p));
+    if (this.activity?.organizerId) {
+      // organizer may not be in participants list
+      if (!map.has(this.activity.organizerId)) {
+        map.set(this.activity.organizerId, { userId: this.activity.organizerId, joinedAt: '' });
+      }
+    }
+    return map;
+  }
+
+  messageSenderInitial(msg: ActivityMessage): string {
+    if (msg.senderFirstName && msg.senderLastName)
+      return (msg.senderFirstName[0] + msg.senderLastName[0]).toUpperCase();
+    if (msg.senderFirstName)
+      return msg.senderFirstName.slice(0, 2).toUpperCase();
+    const p = this.participantMap.get(msg.senderId);
+    if (!p) return msg.senderId.slice(0, 2).toUpperCase();
+    return this.participantInitial(p);
+  }
+
+  messageSenderName(msg: ActivityMessage): string {
+    if (msg.senderFirstName) {
+      return msg.senderLastName
+        ? `${msg.senderFirstName} ${msg.senderLastName[0]}.`
+        : msg.senderFirstName;
+    }
+    const p = this.participantMap.get(msg.senderId);
+    if (!p) return 'Joueur';
+    if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName[0]}.`;
+    if (p.firstName) return p.firstName;
+    return 'Joueur';
+  }
+
+  get isMatchSheetFull(): boolean {
+    return this.activity?.status === 'FULL';
+  }
+
+  get isMatchCompleted(): boolean {
+    return this.activity?.status === 'COMPLETED';
+  }
+
+  get canCompleteMatch(): boolean {
+    return this.isOrganizer &&
+      (this.activity?.status === 'ONGOING' || this.activity?.status === 'FULL');
+  }
+
+  completeMatch(): void {
+    if (!this.activity || this.completing) return;
+    this.completing = true;
+    this.activityService.complete(this.activity.id).subscribe({
+      next: (a) => { this.activity = a; this.completing = false; },
+      error: () => { this.completing = false; },
+    });
+  }
+
+  // ── Map & itinerary ──────────────────────────────────────────────────────
+
+  private buildMapUrl(lat: number, lon: number): SafeResourceUrl {
+    const d = 0.004;
+    const url = `https://www.openstreetmap.org/export/embed.html` +
+      `?bbox=${lon - d},${lat - d},${lon + d},${lat + d}` +
+      `&layer=mapnik&marker=${lat},${lon}`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  private reverseGeocode(lat: number, lon: number): void {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=16&addressdetails=1`;
+    this.http.get<any>(url).subscribe({
+      next: (r) => {
+        const a = r?.address ?? {};
+        const parts = [
+          a.road ?? a.pedestrian ?? a.path,
+          a.house_number,
+          a.suburb ?? a.neighbourhood,
+          a.city ?? a.town ?? a.village,
+        ].filter(Boolean);
+        this.userAddress = parts.length ? parts.slice(0, 3).join(', ') : (r?.display_name?.split(',').slice(0, 2).join(', ') ?? '');
+      },
+      error: () => { this.userAddress = ''; },
+    });
+  }
+
+  detectLocation(): void {
+    if (!navigator.geolocation) { this.locError = 'Géolocalisation non supportée.'; return; }
+    this.locating     = true;
+    this.locError     = '';
+    this.userAddress  = '';
+    this.travelRoutes = {};
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.userLat = pos.coords.latitude;
+        this.userLon = pos.coords.longitude;
+        this.locating = false;
+        this.applyLinearFallback();
+        this.loadAllRoutes();
+        this.reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+      },
+      () => {
+        this.locating = false;
+        this.locError = 'Position introuvable. Vérifie les permissions.';
+      },
+      { enableHighAccuracy: true, timeout: 10_000 }
+    );
+  }
+
+  /** Straight-line distance + estimated time — shows instantly while OSRM loads. */
+  private applyLinearFallback(): void {
+    if (this.userLat == null || !this.activity) return;
+    const { latitude: toLat, longitude: toLon } = this.activity.location;
+    const km = this.haversineKm(this.userLat, this.userLon!, toLat, toLon);
+    // Avg speeds: car 45 km/h urban, bike 16 km/h, walk 5 km/h
+    const estimates: { mode: TravelMode; speed: number }[] = [
+      { mode: 'car',  speed: 45 },
+      { mode: 'bike', speed: 16 },
+      { mode: 'walk', speed: 5  },
+    ];
+    const routes: Partial<Record<TravelMode, TravelRoute>> = {};
+    for (const { mode, speed } of estimates) {
+      const secs = (km / speed) * 3600;
+      routes[mode] = {
+        duration: this.formatDuration(secs) + ' ≈',
+        distance: this.formatDistance(km * 1000),
+      };
+    }
+    this.travelRoutes = routes;
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  setTravelMode(mode: TravelMode): void {
+    this.activeTravelMode = mode;
+  }
+
+  get activeRoute(): TravelRoute | null {
+    return this.travelRoutes[this.activeTravelMode] ?? null;
+  }
+
+  openDirections(): void {
     if (!this.activity) return;
-    const { latitude, longitude } = this.activity.location;
-    window.open(`https://maps.google.com/?q=${latitude},${longitude}`, '_blank');
+    const { latitude: toLat, longitude: toLon } = this.activity.location;
+    const origin = this.userLat != null ? `${this.userLat},${this.userLon}` : '';
+    const dest = `${toLat},${toLon}`;
+    const url = origin
+      ? `https://www.google.com/maps/dir/${origin}/${dest}`
+      : `https://www.google.com/maps/dir//${dest}`;
+    window.open(url, '_blank');
+  }
+
+  private loadAllRoutes(): void {
+    if (this.userLat == null || !this.activity) return;
+    const { latitude: toLat, longitude: toLon } = this.activity.location;
+    const modes: { mode: TravelMode; profile: string }[] = [
+      { mode: 'car',  profile: 'driving'  },
+      { mode: 'bike', profile: 'cycling'  },
+      { mode: 'walk', profile: 'foot'     },
+    ];
+    // Try both OSRM servers; update route when a real road result comes back
+    modes.forEach(({ mode, profile }) => {
+      const tryOsrm = (baseUrl: string) => {
+        const url = `${baseUrl}/route/v1/${profile}` +
+          `/${this.userLon},${this.userLat};${toLon},${toLat}?overview=false`;
+        return this.http.get<any>(url);
+      };
+
+      tryOsrm('https://router.project-osrm.org').subscribe({
+        next: (res) => {
+          const route = res?.routes?.[0];
+          if (route) {
+            this.travelRoutes = {
+              ...this.travelRoutes,
+              [mode]: { duration: this.formatDuration(route.duration), distance: this.formatDistance(route.distance) },
+            };
+          }
+        },
+        error: () => {
+          // Try alternate OSRM instance if primary fails
+          tryOsrm('https://routing.openstreetmap.de/routed-' +
+            (mode === 'car' ? 'car' : mode === 'bike' ? 'bike' : 'foot')).subscribe({
+            next: (res) => {
+              const route = res?.routes?.[0];
+              if (route) {
+                this.travelRoutes = {
+                  ...this.travelRoutes,
+                  [mode]: { duration: this.formatDuration(route.duration), distance: this.formatDistance(route.distance) },
+                };
+              }
+            },
+            error: () => { /* keep straight-line fallback */ },
+          });
+        },
+      });
+    });
+  }
+
+  private formatDuration(seconds: number): string {
+    const m = Math.round(seconds / 60);
+    if (m < 60) return `${m} min`;
+    return `${Math.floor(m / 60)}h${m % 60 > 0 ? String(m % 60).padStart(2,'0') : ''}`;
+  }
+
+  private formatDistance(meters: number): string {
+    return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
   }
 
   // ── Player profile modal ─────────────────────────────────────────────────
@@ -248,7 +508,9 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   }
 
   private startChatPolling(): void {
-    this.chatInterval = setInterval(() => this.loadChat(), 10_000);
+    this.chatInterval     = setInterval(() => this.loadChat(), 10_000);
+    // Also refresh the activity itself so participants/status/spots stay current
+    this.activityInterval = setInterval(() => this.reload(), 20_000);
   }
 
   sendMessage(): void {
@@ -279,9 +541,5 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
 
   isOwnMessage(msg: ActivityMessage): boolean {
     return msg.senderId === this.currentUserId;
-  }
-
-  messageSenderInitial(senderId: string): string {
-    return senderId.slice(0, 2).toUpperCase();
   }
 }

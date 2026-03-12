@@ -1,19 +1,69 @@
 .mn-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px var(--space-3);
+  gap: 5px;
+  padding: 3px 10px 4px;
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: 700;
   font-family: var(--font-body);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  border: 1.5px solid transparent;
+  line-height: 1.4;
+  white-space: nowrap;
 
-  &--primary   { background: var(--clr-primary-10); color: var(--clr-primary); }
-  &--secondary { background: rgba(13,27,75,0.1);    color: var(--clr-secondary); }
-  &--accent    { background: rgba(245,196,0,0.15);  color: var(--clr-accent-dark); }
-  &--success   { background: rgba(34,197,94,0.12);  color: #16a34a; }
-  &--warning   { background: rgba(245,158,11,0.12); color: #d97706; }
-  &--error     { background: rgba(239,68,68,0.12);  color: #dc2626; }
-  &--info      { background: rgba(59,130,246,0.12); color: #2563eb; }
-  &--neutral   { background: var(--clr-surface-2);  color: var(--clr-text-secondary); }
+  // ── Neuro-UX: tinted backgrounds with vivid borders for instant semantic recognition
+  //    Each variant: background ~100/100 tint, text ≥ 4.5:1 contrast, hinted glow
+
+  &--primary {
+    background: #ffebe5;
+    color:      #b82200;
+    border-color: #ffb8a0;
+    box-shadow: 0 0 0 3px rgba(255,58,0,.07);
+  }
+
+  &--secondary {
+    background: #e8eaf6;
+    color:      #1a237e;
+    border-color: #9fa8da;
+  }
+
+  &--accent {
+    background: #fffde7;
+    color:      #7b5800;
+    border-color: #fde047;
+  }
+
+  &--success {
+    background: #dcfce7;
+    color:      #15803d;
+    border-color: #86efac;
+    box-shadow: 0 0 0 3px rgba(34,197,94,.07);
+  }
+
+  &--warning {
+    background: #fef3c7;
+    color:      #92400e;
+    border-color: #fcd34d;
+    box-shadow: 0 0 0 3px rgba(245,158,11,.07);
+  }
+
+  &--error {
+    background: #fee2e2;
+    color:      #991b1b;
+    border-color: #fca5a5;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.07);
+  }
+
+  &--info {
+    background: #dbeafe;
+    color:      #1e40af;
+    border-color: #93c5fd;
+  }
+
+  &--neutral {
+    background: #f1f5f9;
+    color:      #475569;
+    border-color: #cbd5e1;
+  }
 }

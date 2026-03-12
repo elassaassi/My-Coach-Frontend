@@ -1,0 +1,189 @@
+<div class="page-layout">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-header__title">Activités sportives</h2>
+      <p class="page-header__sub">Trouve ta prochaine session</p>
+    </div>
+    <a routerLink="create" class="btn-primary">＋ Créer</a>
+  </div>
+
+  <!-- ── Country filter ──────────────────────────────────────────────────── -->
+  <div class="country-pills">
+    <button class="country-pill" [class.country-pill--active]="selectedCountry === ''"
+            (click)="selectCountry('')" type="button">
+      🌍 Tous pays
+    </button>
+    <button class="country-pill" [class.country-pill--active]="selectedCountry === 'Maroc'"
+            (click)="selectCountry('Maroc')" type="button">
+      🇲🇦 Maroc
+    </button>
+    <button class="country-pill" [class.country-pill--active]="selectedCountry === 'France'"
+            (click)="selectCountry('France')" type="button">
+      🇫🇷 France
+    </button>
+  </div>
+
+  <!-- ── Sport pills ──────────────────────────────────────────────────────── -->
+  <div class="sport-pills">
+    <button
+      class="sport-pill"
+      [class.sport-pill--active]="selectedSport === ''"
+      (click)="selectSport('')"
+      type="button">
+      🏅 Tous
+    </button>
+    <button
+      *ngFor="let s of sports"
+      class="sport-pill"
+      [class.sport-pill--active]="selectedSport === s.id"
+      (click)="selectSport(s.id)"
+      type="button">
+      {{ s.emoji }} {{ s.label }}
+    </button>
+  </div>
+
+  <!-- ── Secondary filters ────────────────────────────────────────────────── -->
+  <div class="filters">
+
+    <!-- City autocomplete -->
+    <div class="city-filter">
+      <div class="city-filter__wrap">
+        <span class="city-filter__icon">📍</span>
+        <input
+          class="city-filter__input"
+          type="text"
+          [(ngModel)]="cityQuery"
+          (focus)="onCityFocus()"
+          (input)="onCityInput()"
+          (blur)="onCityBlur()"
+          placeholder="Toutes les villes"
+          autocomplete="off" />
+        <button
+          class="city-filter__clear"
+          *ngIf="citySelected"
+          type="button"
+          (click)="clearCity()">✕</button>
+        <span class="city-filter__spinner" *ngIf="loadingSuggestions">⏳</span>
+
+        <!-- Suggestions -->
+        <div class="city-dropdown" *ngIf="showSuggestions && citySuggestions.length > 0">
+          <button
+            class="city-option"
+            *ngFor="let c of citySuggestions"
+            type="button"
+            (mousedown)="selectCity(c)">
+            <span class="city-option__flag">{{ c.flag }}</span>
+            <span class="city-option__name">{{ c.name }}</span>
+            <span class="city-option__region">{{ c.region }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status filter -->
+    <select [(ngModel)]="filters.status" (change)="onStatusChange()" class="filter-select">
+      <option value="">Tous statuts</option>
+      <option value="OPEN">Ouvert</option>
+      <option value="FULL">Complet</option>
+      <option value="ONGOING">En cours</option>
+      <option value="COMPLETED">Terminé</option>
+    </select>
+
+    <!-- Sort toggle -->
+    <button class="filter-sort-btn" (click)="toggleSort()" type="button"
+            [title]="sortAsc ? 'Date croissante' : 'Date décroissante'">
+      {{ sortAsc ? '↑ Date' : '↓ Date' }}
+    </button>
+  </div>
+
+  <!-- ── Date presets ──────────────────────────────────────────────────────── -->
+  <div class="date-pills">
+    <button class="date-pill" [class.date-pill--active]="selectedDatePreset === ''"
+            (click)="setDatePreset('')" type="button">Toutes dates</button>
+    <button class="date-pill" [class.date-pill--active]="selectedDatePreset === 'today'"
+            (click)="setDatePreset('today')" type="button">Aujourd'hui</button>
+    <button class="date-pill" [class.date-pill--active]="selectedDatePreset === 'week'"
+            (click)="setDatePreset('week')" type="button">Cette semaine</button>
+    <button class="date-pill" [class.date-pill--active]="selectedDatePreset === 'month'"
+            (click)="setDatePreset('month')" type="button">Ce mois</button>
+  </div>
+
+  <!-- ── Skeleton ─────────────────────────────────────────────────────────── -->
+  <div *ngIf="loading" class="activities-grid">
+    <div *ngFor="let _ of [1,2,3,4,5,6]" class="act-skeleton">
+      <div class="act-skeleton__top">
+        <div class="skel skel--circle"></div>
+        <div class="skel skel--sm" style="width:50px"></div>
+      </div>
+      <div class="skel skel--md" style="width:80%;margin-top:10px"></div>
+      <div class="skel skel--sm" style="width:60%;margin-top:6px"></div>
+      <div class="skel skel--sm" style="width:45%;margin-top:4px"></div>
+    </div>
+  </div>
+
+  <!-- ── Cards grid ───────────────────────────────────────────────────────── -->
+  <div *ngIf="!loading" class="activities-grid">
+
+    <div *ngIf="activities.length === 0" class="empty-state">
+      <span class="empty-state__icon">🏙️</span>
+      <p>Aucune activité trouvée dans cette zone.</p>
+      <a routerLink="create" class="btn-primary" style="display:inline-flex;margin-top:1rem">
+        Créer la première !
+      </a>
+    </div>
+
+    <a *ngFor="let a of activities"
+       [routerLink]="[a.id]"
+       class="act-card">
+      <div class="act-card__accent" [style.background]="sportGradient(a.sport)"></div>
+      <div class="act-card__body">
+
+        <div class="act-card__top">
+          <div class="sport-mini">
+            <span>{{ sportEmoji(a.sport) }}</span>
+            <span class="sport-mini__label">{{ a.sport | titlecase }}</span>
+          </div>
+          <span class="level-badge" [attr.data-level]="a.requiredLevel">
+            {{ levelLabel(a.requiredLevel) }}
+          </span>
+        </div>
+
+        <h4 class="act-card__title">{{ a.title }}</h4>
+
+        <div class="act-card__meta">
+          <span>📍 {{ a.location.city }}</span>
+          <span class="act-card__sep">·</span>
+          <span>{{ a.scheduledAt | date:'EEE dd MMM · HH:mm' }}</span>
+        </div>
+
+        <div class="fill-bar">
+          <div class="fill-bar__track">
+            <div class="fill-bar__fill"
+                 [style.width]="fillPct(a) + '%'"
+                 [class.fill-bar__fill--warn]="fillPct(a) >= 60 && fillPct(a) < 85"
+                 [class.fill-bar__fill--danger]="fillPct(a) >= 85">
+            </div>
+          </div>
+          <span class="fill-bar__label">{{ spotsLabel(a) }}</span>
+        </div>
+      </div>
+      <div class="act-card__arrow">→</div>
+    </a>
+  </div>
+
+  <!-- ── Infinite scroll sentinel ─────────────────────────────────────── -->
+  <div #sentinel class="scroll-sentinel"></div>
+
+  <!-- Loading more skeleton row -->
+  <div *ngIf="loadingMore" class="act-list">
+    <div class="act-card-skel" *ngFor="let _ of [1,2]"></div>
+  </div>
+
+  <!-- End of results -->
+  <div *ngIf="!hasMore && activities.length > 0 && !loading" class="end-of-feed">
+    Tu as tout vu 🎉
+  </div>
+
+</div>

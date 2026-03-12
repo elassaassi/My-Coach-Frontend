@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -67,6 +67,9 @@ export class ProfileComponent implements OnInit {
   private readonly activityService = inject(ActivityService);
   private readonly ratingService   = inject(RatingService);
   private readonly authService     = inject(AuthService);
+  private readonly route           = inject(ActivatedRoute);
+
+  isOwnProfile = true;
 
   // ── State ─────────────────────────────────────────────────────────────────
   user:       User | null = null;
@@ -126,15 +129,22 @@ export class ProfileComponent implements OnInit {
   }
 
   get upcomingActivities(): Activity[] {
+    const now = new Date();
     return this.activities
-      .filter(a => new Date(a.scheduledAt) > new Date() && a.status === 'OPEN')
-      .slice(0, 3);
+      .filter(a =>
+        (['OPEN', 'FULL', 'ONGOING'].includes(a.status) && new Date(a.scheduledAt) > now)
+      )
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
   }
 
   get pastActivities(): Activity[] {
+    const now = new Date();
     return this.activities
-      .filter(a => new Date(a.scheduledAt) <= new Date() || a.status === 'COMPLETED')
-      .slice(0, 3);
+      .filter(a =>
+        a.status === 'COMPLETED' ||
+        (a.status === 'ONGOING' && new Date(a.scheduledAt) <= now)
+      )
+      .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
   }
 
   get achievements(): { icon: string; label: string; unlocked: boolean }[] {
@@ -162,24 +172,42 @@ export class ProfileComponent implements OnInit {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    const userId = this.authService.currentUserId;
+    const paramId = this.route.snapshot.paramMap.get('id');
+    this.isOwnProfile = !paramId;
 
-    forkJoin({
-      user:       this.userService.getMe(),
-      activities: this.activityService.getMyActivities(),
-      stats:      userId
-        ? this.ratingService.getPlayerStats(userId).pipe(catchError(() => of(null)))
-        : of(null),
-    }).subscribe({
-      next: ({ user, activities, stats }) => {
-        this.user       = user;
-        this.activities = activities;
-        this.stats      = stats;
-        this.loading    = false;
-        this.initEditForm();
-      },
-      error: () => { this.loading = false; },
-    });
+    if (paramId) {
+      // Viewing another user's profile
+      forkJoin({
+        user:  this.userService.getById(paramId),
+        stats: this.ratingService.getPlayerStats(paramId).pipe(catchError(() => of(null))),
+      }).subscribe({
+        next: ({ user, stats }) => {
+          this.user    = user;
+          this.stats   = stats;
+          this.loading = false;
+        },
+        error: () => { this.loading = false; },
+      });
+    } else {
+      // Own profile
+      const userId = this.authService.currentUserId;
+      forkJoin({
+        user:       this.userService.getMe(),
+        activities: this.activityService.getMyActivities(),
+        stats:      userId
+          ? this.ratingService.getPlayerStats(userId).pipe(catchError(() => of(null)))
+          : of(null),
+      }).subscribe({
+        next: ({ user, activities, stats }) => {
+          this.user       = user;
+          this.activities = activities;
+          this.stats      = stats;
+          this.loading    = false;
+          this.initEditForm();
+        },
+        error: () => { this.loading = false; },
+      });
+    }
   }
 
   // ── Edit ───────────────────────────────────────────────────────────────────

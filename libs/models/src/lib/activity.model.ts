@@ -11,6 +11,8 @@ export interface Location {
 export interface Participant {
   userId: string;
   joinedAt: string;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 export interface Activity {
@@ -48,6 +50,8 @@ export interface ActivityMessage {
   id: string;
   activityId: string;
   senderId: string;
+  senderFirstName?: string | null;
+  senderLastName?: string | null;
   content: string;
   sentAt: string;
 }
@@ -55,7 +59,9 @@ export interface ActivityMessage {
 export interface ActivitySearchParams {
   sport?: string;
   city?: string;
-  status?: ActivityStatus;
+  status?: ActivityStatus | '';
+  dateFrom?: string;   // ISO string
+  dateTo?: string;     // ISO string
   page?: number;
   size?: number;
 }

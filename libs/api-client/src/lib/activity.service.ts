@@ -14,9 +14,11 @@ export class ActivityService {
 
   search(params?: ActivitySearchParams): Observable<Activity[]> {
     let httpParams = new HttpParams();
-    if (params?.sport)   httpParams = httpParams.set('sport',  params.sport);
-    if (params?.city)    httpParams = httpParams.set('city',   params.city);
-    if (params?.status)  httpParams = httpParams.set('status', params.status);
+    if (params?.sport)    httpParams = httpParams.set('sport',    params.sport);
+    if (params?.city)     httpParams = httpParams.set('city',     params.city);
+    if (params?.status)   httpParams = httpParams.set('status',   params.status);
+    if (params?.dateFrom) httpParams = httpParams.set('dateFrom', params.dateFrom);
+    if (params?.dateTo)   httpParams = httpParams.set('dateTo',   params.dateTo);
     if (params?.page  != null) httpParams = httpParams.set('page', params.page.toString());
     if (params?.size  != null) httpParams = httpParams.set('size', params.size.toString());
     return this.http.get<Activity[]>(`${this.BASE}/search`, { params: httpParams });
@@ -44,5 +46,13 @@ export class ActivityService {
 
   sendMessage(activityId: string, content: string): Observable<ActivityMessage> {
     return this.http.post<ActivityMessage>(`${this.BASE}/${activityId}/messages`, { content });
+  }
+
+  complete(id: string): Observable<Activity> {
+    return this.http.post<Activity>(`${this.BASE}/${id}/complete`, {});
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.BASE}/${id}`);
   }
 }
