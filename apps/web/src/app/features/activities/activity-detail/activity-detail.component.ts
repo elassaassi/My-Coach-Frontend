@@ -10,7 +10,6 @@ import { AuthService } from '@momentum/api-client';
 import { Activity, ActivityMessage, Participant, User } from '@momentum/models';
 import { PlayerStats } from '@momentum/models';
 import { MnBadgeComponent } from '@momentum/ui';
-import { environment } from '../../../../environments/environment';
 
 interface TravelRoute { duration: string; distance: string; isEstimate?: boolean; }
 type TravelMode = 'car' | 'bike' | 'walk';
@@ -400,59 +399,7 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   private loadAllRoutes(): void {
     if (this.userLat == null || !this.activity) return;
     const { latitude: toLat, longitude: toLon } = this.activity.location;
-
-    const key = environment.googleMapsApiKey;
-    if (key && !key.includes('YOUR-KEY')) {
-      this.loadGoogleMapsRoutes(toLat, toLon, key);
-    } else {
-      this.loadOsrmRoutes(toLat, toLon);
-    }
-  }
-
-  private loadGoogleMapsRoutes(toLat: number, toLon: number, apiKey: string): void {
-    const gmaps = (window as any).google?.maps;
-    const doRoute = () => {
-      const service = new (window as any).google.maps.DirectionsService();
-      const gm = (window as any).google.maps;
-      const gmModes: { mode: TravelMode; travelMode: any }[] = [
-        { mode: 'car',  travelMode: gm.TravelMode.DRIVING   },
-        { mode: 'bike', travelMode: gm.TravelMode.BICYCLING  },
-        { mode: 'walk', travelMode: gm.TravelMode.WALKING    },
-      ];
-      gmModes.forEach(({ mode, travelMode }) => {
-        service.route({
-          origin:      { lat: this.userLat, lng: this.userLon },
-          destination: { lat: toLat, lng: toLon },
-          travelMode,
-        }, (result: any, status: string) => {
-          console.log(`[Maps] ${mode} status=${status}`, result);
-          if (status === 'OK' && result?.routes?.[0]?.legs?.[0]) {
-            const leg = result.routes[0].legs[0];
-            this.travelRoutes = {
-              ...this.travelRoutes,
-              [mode]: {
-                duration:   leg.duration.text,
-                distance:   leg.distance.text,
-                isEstimate: false,
-              },
-            };
-          } else {
-            // Google Maps failed — fall back to OSRM for this mode
-            this.loadOsrmRouteForMode(mode, toLat, toLon);
-          }
-        });
-      });
-    };
-
-    if (gmaps?.DirectionsService) {
-      doRoute();
-    } else {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=__gmapsReady`;
-      script.async = true;
-      (window as any).__gmapsReady = () => { doRoute(); };
-      document.head.appendChild(script);
-    }
+    this.loadOsrmRoutes(toLat, toLon);
   }
 
   private loadOsrmRoutes(toLat: number, toLon: number): void {
