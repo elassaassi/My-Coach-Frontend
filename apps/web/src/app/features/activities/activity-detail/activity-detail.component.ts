@@ -413,10 +413,11 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     const gmaps = (window as any).google?.maps;
     const doRoute = () => {
       const service = new (window as any).google.maps.DirectionsService();
-      const gmModes: { mode: TravelMode; travelMode: string }[] = [
-        { mode: 'car',  travelMode: 'DRIVING'   },
-        { mode: 'bike', travelMode: 'BICYCLING'  },
-        { mode: 'walk', travelMode: 'WALKING'    },
+      const gm = (window as any).google.maps;
+      const gmModes: { mode: TravelMode; travelMode: any }[] = [
+        { mode: 'car',  travelMode: gm.TravelMode.DRIVING   },
+        { mode: 'bike', travelMode: gm.TravelMode.BICYCLING  },
+        { mode: 'walk', travelMode: gm.TravelMode.WALKING    },
       ];
       gmModes.forEach(({ mode, travelMode }) => {
         service.route({
@@ -443,7 +444,7 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
       doRoute();
     } else {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=routes&callback=__gmapsReady`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=__gmapsReady`;
       script.async = true;
       (window as any).__gmapsReady = () => { doRoute(); };
       document.head.appendChild(script);
