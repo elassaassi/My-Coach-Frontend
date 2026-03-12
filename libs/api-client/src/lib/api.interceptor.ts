@@ -3,6 +3,10 @@ import { map } from 'rxjs/operators';
 
 // Ajoute le token JWT à chaque requête
 export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
+  // Don't add auth header to external APIs (OSRM, Nominatim, etc.)
+  if (!req.url.startsWith('/') && !req.url.includes('localhost')) {
+    return next(req);
+  }
   const token = localStorage.getItem('momentum_token');
   const authReq = token
     ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
