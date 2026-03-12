@@ -213,8 +213,13 @@
       <h4 class="form-section__title">Photo de profil</h4>
       <div class="avatar-upload-row">
         <div class="avatar-upload-preview">
-          <img *ngIf="user?.avatarUrl" class="avatar-upload-img" [src]="user!.avatarUrl" [alt]="initials" />
-          <div *ngIf="!user?.avatarUrl" class="avatar-upload-initials" [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
+          <img *ngIf="localAvatarPreview || user?.avatarUrl"
+               class="avatar-upload-img"
+               [src]="localAvatarPreview ?? user!.avatarUrl"
+               [alt]="initials" />
+          <div *ngIf="!localAvatarPreview && !user?.avatarUrl"
+               class="avatar-upload-initials"
+               [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
             {{ initials }}
           </div>
         </div>
@@ -280,6 +285,7 @@
   </div>
 
   <div class="drawer__footer">
+    <span *ngIf="saveError" class="save-error">⚠ Échec — vérifier la connexion</span>
     <button class="btn btn--ghost" (click)="closeEdit()">Annuler</button>
     <button class="btn btn--primary" (click)="saveProfile()" [disabled]="saving">
       {{ saving ? 'Enregistrement...' : 'Enregistrer' }}

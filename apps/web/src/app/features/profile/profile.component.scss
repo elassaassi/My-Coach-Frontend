@@ -909,6 +909,14 @@ $bg:        #F8F9FA;
   to   { opacity: 1; transform: translateY(0); }
 }
 
+// Save error inline message
+.save-error {
+  flex: 1;
+  font-size: var(--text-xs);
+  color: $red;
+  font-weight: var(--fw-semibold);
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 .save-toast {
   position: fixed;

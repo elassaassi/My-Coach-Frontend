@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
@@ -62,7 +62,7 @@ const CITIES = [
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss'],
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent implements OnInit, OnDestroy {
   private readonly userService     = inject(UserService);
   private readonly activityService = inject(ActivityService);
   private readonly ratingService   = inject(RatingService);
@@ -77,9 +77,11 @@ export class ProfileComponent implements OnInit {
   activities: Activity[] = [];
   loading  = true;
   saving          = false;
+  saveError       = false;
   editMode        = false;
   saveSuccess     = false;
   uploadingAvatar = false;
+  localAvatarPreview: string | null = null;
 
   // ── Edit form state ────────────────────────────────────────────────────────
   editFirstName = '';
@@ -236,14 +238,27 @@ export class ProfileComponent implements OnInit {
   onAvatarFileChange(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file || this.uploadingAvatar) return;
+
+    // Show local preview immediately
+    if (this.localAvatarPreview) URL.revokeObjectURL(this.localAvatarPreview);
+    this.localAvatarPreview = URL.createObjectURL(file);
+
     this.uploadingAvatar = true;
     this.userService.uploadAvatar(file).subscribe({
       next: (updated) => {
         this.user = updated;
         this.uploadingAvatar = false;
+        // Keep localAvatarPreview until component destroys (server URL may take time to load)
       },
-      error: () => { this.uploadingAvatar = false; },
+      error: () => {
+        this.uploadingAvatar = false;
+        this.localAvatarPreview = null;
+      },
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.localAvatarPreview) URL.revokeObjectURL(this.localAvatarPreview);
   }
 
   cityChange(cityName: string): void {
@@ -258,6 +273,7 @@ export class ProfileComponent implements OnInit {
   saveProfile(): void {
     if (this.saving) return;
     this.saving = true;
+    this.saveError = false;
 
     const city = this._selectedCity ?? this.cities.find(c => c.name === this.editCity);
 
@@ -271,13 +287,17 @@ export class ProfileComponent implements OnInit {
       sports:    this.editSports,
     }).subscribe({
       next: (updated) => {
-        this.user      = updated;
-        this.saving    = false;
-        this.editMode  = false;
+        this.user        = updated;
+        this.saving      = false;
+        this.editMode    = false;
         this.saveSuccess = true;
         setTimeout(() => { this.saveSuccess = false; }, 3000);
       },
-      error: () => { this.saving = false; },
+      error: () => {
+        this.saving    = false;
+        this.saveError = true;
+        setTimeout(() => { this.saveError = false; }, 4000);
+      },
     });
   }
 }
