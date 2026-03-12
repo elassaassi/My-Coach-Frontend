@@ -19,4 +19,10 @@ export class UserService {
   updateProfile(req: UpdateProfileRequest): Observable<User> {
     return this.http.put<User>(`${this.BASE}/me/profile`, req);
   }
+
+  uploadAvatar(file: File): Observable<User> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<User>(`${this.BASE}/me/avatar`, form);
+  }
 }

@@ -76,9 +76,10 @@ export class ProfileComponent implements OnInit {
   stats:      PlayerStats | null = null;
   activities: Activity[] = [];
   loading  = true;
-  saving   = false;
-  editMode = false;
-  saveSuccess = false;
+  saving          = false;
+  editMode        = false;
+  saveSuccess     = false;
+  uploadingAvatar = false;
 
   // ── Edit form state ────────────────────────────────────────────────────────
   editFirstName = '';
@@ -231,6 +232,19 @@ export class ProfileComponent implements OnInit {
   }
 
   removeSport(i: number): void { this.editSports.splice(i, 1); }
+
+  onAvatarFileChange(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || this.uploadingAvatar) return;
+    this.uploadingAvatar = true;
+    this.userService.uploadAvatar(file).subscribe({
+      next: (updated) => {
+        this.user = updated;
+        this.uploadingAvatar = false;
+      },
+      error: () => { this.uploadingAvatar = false; },
+    });
+  }
 
   cityChange(cityName: string): void {
     const c = this.cities.find(c => c.name === cityName);

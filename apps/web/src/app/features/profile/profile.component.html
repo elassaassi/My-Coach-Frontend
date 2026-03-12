@@ -15,7 +15,8 @@
     <!-- Avatar -->
     <div style="position:relative;flex-shrink:0">
       <div class="avatar-ring">
-        <div class="avatar-inner" [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
+        <img *ngIf="user?.avatarUrl" class="avatar-img" [src]="user!.avatarUrl" [alt]="initials" />
+        <div *ngIf="!user?.avatarUrl" class="avatar-inner" [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
           {{ initials }}
         </div>
       </div>
@@ -58,14 +59,14 @@
     <!-- Stats grid -->
     <div class="ratings-grid">
       <div class="rating-item">
-        <span class="rating-item__label">Technique</span>
+        <span class="rating-item__label">Technicité</span>
         <div class="rating-item__stars">
           <span *ngFor="let filled of stars(stats.avgTechnicality)" [class]="filled ? 'star star--on' : 'star'">★</span>
         </div>
         <span class="rating-item__val">{{ stats.avgTechnicality | number:'1.1-1' }}/5</span>
       </div>
       <div class="rating-item">
-        <span class="rating-item__label">Comportement</span>
+        <span class="rating-item__label">Attitude</span>
         <div class="rating-item__stars">
           <span *ngFor="let filled of stars(stats.avgBehavior)" [class]="filled ? 'star star--on' : 'star'">★</span>
         </div>
@@ -207,6 +208,27 @@
   </div>
 
   <div class="drawer__body">
+    <!-- Avatar upload -->
+    <div class="form-section">
+      <h4 class="form-section__title">Photo de profil</h4>
+      <div class="avatar-upload-row">
+        <div class="avatar-upload-preview">
+          <img *ngIf="user?.avatarUrl" class="avatar-upload-img" [src]="user!.avatarUrl" [alt]="initials" />
+          <div *ngIf="!user?.avatarUrl" class="avatar-upload-initials" [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
+            {{ initials }}
+          </div>
+        </div>
+        <div class="avatar-upload-actions">
+          <label class="btn btn--ghost btn--sm avatar-upload-label">
+            {{ uploadingAvatar ? 'Chargement...' : 'Choisir une photo' }}
+            <input type="file" accept="image/*" [disabled]="uploadingAvatar"
+                   (change)="onAvatarFileChange($event)" hidden />
+          </label>
+          <p class="avatar-upload-hint">JPG, PNG ou WebP · max 5 Mo</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Identity -->
     <div class="form-section">
       <h4 class="form-section__title">Identité</h4>
