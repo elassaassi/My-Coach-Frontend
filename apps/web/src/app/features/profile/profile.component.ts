@@ -116,6 +116,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
     return `Membre depuis ${Math.floor(months / 12)} an${Math.floor(months / 12) > 1 ? 's' : ''}`;
   }
 
+  get effectiveAvatarUrl(): string | null {
+    return this.localAvatarPreview ?? this.user?.avatarUrl ?? null;
+  }
+
   get proScoreCircle(): number {
     // SVG circle circumference for r=44 → 2π×44 ≈ 276.46
     const score = this.stats?.proScore ?? 0;
@@ -248,7 +252,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
       next: (updated) => {
         this.user = updated;
         this.uploadingAvatar = false;
-        // Keep localAvatarPreview until component destroys (server URL may take time to load)
+        this.editMode = false;
+        this.saveSuccess = true;
+        setTimeout(() => { this.saveSuccess = false; }, 3000);
       },
       error: () => {
         this.uploadingAvatar = false;

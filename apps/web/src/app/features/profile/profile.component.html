@@ -15,8 +15,8 @@
     <!-- Avatar -->
     <div style="position:relative;flex-shrink:0">
       <div class="avatar-ring">
-        <img *ngIf="user?.avatarUrl" class="avatar-img" [src]="user!.avatarUrl" [alt]="initials" />
-        <div *ngIf="!user?.avatarUrl" class="avatar-inner" [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
+        <img *ngIf="effectiveAvatarUrl" class="avatar-img" [src]="effectiveAvatarUrl" [alt]="initials" />
+        <div *ngIf="!effectiveAvatarUrl" class="avatar-inner" [style.background]="'hsl(' + avatarHue + ',60%,42%)'">
           {{ initials }}
         </div>
       </div>
