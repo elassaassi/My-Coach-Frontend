@@ -343,23 +343,25 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
     );
   }
 
-  /** Straight-line distance + estimated time — shows instantly while OSRM loads. */
+  /** Straight-line distance + estimated time — shows instantly while OSRM loads.
+   *  A road-detour factor of 1.3 is applied to correct the straight-line underestimate. */
   private applyLinearFallback(): void {
     if (this.userLat == null || !this.activity) return;
     const { latitude: toLat, longitude: toLon } = this.activity.location;
-    const km = this.haversineKm(this.userLat, this.userLon!, toLat, toLon);
-    // Avg speeds: car 45 km/h urban, bike 16 km/h, walk 5 km/h
+    const straightKm = this.haversineKm(this.userLat, this.userLon!, toLat, toLon);
+    // Road is ~30% longer than straight-line
+    const roadKm = straightKm * 1.3;
     const estimates: { mode: TravelMode; speed: number }[] = [
       { mode: 'car',  speed: 45 },
-      { mode: 'bike', speed: 16 },
+      { mode: 'bike', speed: 15 },
       { mode: 'walk', speed: 5  },
     ];
     const routes: Partial<Record<TravelMode, TravelRoute>> = {};
     for (const { mode, speed } of estimates) {
-      const secs = (km / speed) * 3600;
+      const secs = (roadKm / speed) * 3600;
       routes[mode] = {
         duration: this.formatDuration(secs) + ' ≈',
-        distance: this.formatDistance(km * 1000),
+        distance: this.formatDistance(roadKm * 1000),
       };
     }
     this.travelRoutes = routes;
@@ -396,45 +398,30 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   private loadAllRoutes(): void {
     if (this.userLat == null || !this.activity) return;
     const { latitude: toLat, longitude: toLon } = this.activity.location;
-    const modes: { mode: TravelMode; profile: string }[] = [
-      { mode: 'car',  profile: 'driving'  },
-      { mode: 'bike', profile: 'cycling'  },
-      { mode: 'walk', profile: 'foot'     },
-    ];
-    // Try both OSRM servers; update route when a real road result comes back
-    modes.forEach(({ mode, profile }) => {
-      const tryOsrm = (baseUrl: string) => {
-        const url = `${baseUrl}/route/v1/${profile}` +
-          `/${this.userLon},${this.userLat};${toLon},${toLat}?overview=false`;
-        return this.http.get<any>(url);
-      };
+    const coords = `${this.userLon},${this.userLat};${toLon},${toLat}`;
 
-      tryOsrm('https://router.project-osrm.org').subscribe({
+    // Each mode has its own best-fit OSRM server
+    const modes: { mode: TravelMode; url: string }[] = [
+      { mode: 'car',  url: `https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`  },
+      { mode: 'bike', url: `https://routing.openstreetmap.de/routed-bike/route/v1/cycling/${coords}?overview=false` },
+      { mode: 'walk', url: `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coords}?overview=false`   },
+    ];
+
+    modes.forEach(({ mode, url }) => {
+      this.http.get<any>(url).subscribe({
         next: (res) => {
           const route = res?.routes?.[0];
-          if (route) {
+          if (route?.duration != null && route?.distance != null) {
             this.travelRoutes = {
               ...this.travelRoutes,
-              [mode]: { duration: this.formatDuration(route.duration), distance: this.formatDistance(route.distance) },
+              [mode]: {
+                duration: this.formatDuration(route.duration),
+                distance: this.formatDistance(route.distance),
+              },
             };
           }
         },
-        error: () => {
-          // Try alternate OSRM instance if primary fails
-          tryOsrm('https://routing.openstreetmap.de/routed-' +
-            (mode === 'car' ? 'car' : mode === 'bike' ? 'bike' : 'foot')).subscribe({
-            next: (res) => {
-              const route = res?.routes?.[0];
-              if (route) {
-                this.travelRoutes = {
-                  ...this.travelRoutes,
-                  [mode]: { duration: this.formatDuration(route.duration), distance: this.formatDistance(route.distance) },
-                };
-              }
-            },
-            error: () => { /* keep straight-line fallback */ },
-          });
-        },
+        error: () => { /* keep straight-line fallback */ },
       });
     });
   }
