@@ -653,7 +653,13 @@
   border-radius: var(--radius-lg);
   transition: border-color 0.15s;
 
-  &--organizer { border-color: #fbbf24; background: #fffbeb; }
+  &--organizer {
+    border-color: #fbbf24;
+    background: #fffbeb;
+    // Force dark text — #fffbeb background is hardcoded, text-primary is white in dark mode
+    .participant-chip__name   { color: #92400e; }
+    .participant-chip__joined { color: #b45309; }
+  }
   &--empty     { opacity: .45; }
 
   &__avatar {
