@@ -219,7 +219,7 @@ export class ActivityCreateComponent implements OnDestroy {
     return !!this.selectedCountry && this.regionSelected && this.venueSelected
         && !!this.date && !!this.time && this.maxParticipants >= 2;
   }
-  get canSubmit(): boolean { return !!this.title.trim() && !this.submitting; }
+  get canSubmit(): boolean { return !!this.title.trim() && this.regionSelected && !this.submitting; }
 
   get fomoMessage(): string {
     const s = SPORTS.find(x => x.id === this.sport);
@@ -623,7 +623,10 @@ export class ActivityCreateComponent implements OnDestroy {
 
     this.activityService.create(req).subscribe({
       next: (a) => { this.createdActivityId = a.id; this.success = true; this.submitting = false; },
-      error: ()  => { this.error = 'Une erreur est survenue. Vérifie ta connexion et réessaie.'; this.submitting = false; },
+      error: (err) => {
+        this.error = err?.error?.error || 'Une erreur est survenue. Vérifie ta connexion et réessaie.';
+        this.submitting = false;
+      },
     });
   }
 
