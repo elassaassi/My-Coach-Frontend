@@ -1,5 +1,8 @@
-import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpResponse } from '@angular/common/http';
-import { map } from 'rxjs/operators';
+import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpResponse, HttpErrorResponse } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { map, catchError } from 'rxjs/operators';
+import { throwError } from 'rxjs';
 
 // Ajoute le token JWT à chaque requête
 export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
@@ -25,6 +28,20 @@ export const apiUnwrapInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown
         }
       }
       return event;
+    })
+  );
+};
+
+// Redirige vers /auth/login sur 401 (token absent ou expiré).
+export const errorInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
+  const router = inject(Router);
+  return next(req).pipe(
+    catchError((err: HttpErrorResponse) => {
+      if (err.status === 401) {
+        localStorage.removeItem('momentum_token');
+        router.navigate(['/auth/login']);
+      }
+      return throwError(() => err);
     })
   );
 };
