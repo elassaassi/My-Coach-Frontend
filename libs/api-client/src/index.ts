@@ -4,3 +4,4 @@ export * from './lib/activity.service';
 export * from './lib/rating.service';
 export * from './lib/highlight.service';
 export * from './lib/api.interceptor';
+export * from './lib/messaging.service';

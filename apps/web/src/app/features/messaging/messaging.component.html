@@ -1,0 +1,143 @@
+<div class="messaging">
+
+  <!-- ── Sidebar : liste des conversations ─────────────────────────────── -->
+  <aside class="sidebar">
+
+    <div class="sidebar__header">
+      <h2 class="sidebar__title">Messages</h2>
+      <button class="sidebar__refresh" (click)="loadConversations()" title="Rafraîchir">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Skeleton chargement -->
+    <div class="sidebar__list" *ngIf="loadingConversations">
+      <div class="skeleton-item" *ngFor="let i of [1,2,3,4]">
+        <div class="skeleton-avatar"></div>
+        <div class="skeleton-lines">
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- État vide -->
+    <div class="sidebar__empty" *ngIf="!loadingConversations && conversations.length === 0">
+      <span>💬</span>
+      <p>Aucune conversation</p>
+      <small>Connecte-toi avec d'autres joueurs depuis le matching</small>
+    </div>
+
+    <!-- Liste -->
+    <ul class="sidebar__list" *ngIf="!loadingConversations && conversations.length > 0">
+      <li
+        *ngFor="let conv of conversations; trackBy: trackById"
+        class="conv-item"
+        [class.conv-item--active]="selectedConversation?.id === conv.id"
+        (click)="selectConversation(conv)"
+      >
+        <div class="avatar avatar--md">
+          <img *ngIf="avatarUrl(conv.otherParticipantId)" [src]="avatarUrl(conv.otherParticipantId)" alt="">
+          <span *ngIf="!avatarUrl(conv.otherParticipantId)">{{ initials(conv.otherParticipantId) }}</span>
+        </div>
+        <div class="conv-item__body">
+          <div class="conv-item__top">
+            <span class="conv-item__name">{{ displayName(conv.otherParticipantId) }}</span>
+            <span class="conv-item__time" *ngIf="conv.lastMessageAt">{{ relativeTime(conv.lastMessageAt) }}</span>
+          </div>
+          <p class="conv-item__preview">
+            {{ conv.lastMessagePreview || 'Nouvelle conversation' }}
+          </p>
+        </div>
+      </li>
+    </ul>
+
+  </aside>
+
+  <!-- ── Panneau principal : fil de messages ───────────────────────────── -->
+  <section class="thread">
+
+    <!-- Aucune conversation sélectionnée -->
+    <div class="thread__empty" *ngIf="!selectedConversation">
+      <div class="thread__empty-icon">💬</div>
+      <h3>Tes messages</h3>
+      <p>Sélectionne une conversation ou trouve un joueur via le matching pour commencer à échanger.</p>
+    </div>
+
+    <ng-container *ngIf="selectedConversation">
+
+      <!-- Header conversation -->
+      <div class="thread__header">
+        <div class="avatar avatar--md">
+          <img *ngIf="avatarUrl(selectedConversation.otherParticipantId)" [src]="avatarUrl(selectedConversation.otherParticipantId)" alt="">
+          <span *ngIf="!avatarUrl(selectedConversation.otherParticipantId)">{{ initials(selectedConversation.otherParticipantId) }}</span>
+        </div>
+        <span class="thread__header-name">{{ displayName(selectedConversation.otherParticipantId) }}</span>
+      </div>
+
+      <!-- Fil de messages -->
+      <div class="thread__messages" #messagesList>
+
+        <div class="thread__loading" *ngIf="loadingMessages">
+          <span class="spinner"></span>
+        </div>
+
+        <div class="thread__empty-messages" *ngIf="!loadingMessages && messages.length === 0">
+          <p>Aucun message. Commence la conversation !</p>
+        </div>
+
+        <div
+          *ngFor="let msg of messages; trackBy: trackById"
+          class="msg-row"
+          [class.msg-row--own]="isOwn(msg)"
+        >
+          <!-- Avatar de l'expéditeur (côté gauche seulement) -->
+          <div class="avatar avatar--sm" *ngIf="!isOwn(msg)">
+            <img *ngIf="avatarUrl(msg.senderId)" [src]="avatarUrl(msg.senderId)" alt="">
+            <span *ngIf="!avatarUrl(msg.senderId)">{{ initials(msg.senderId) }}</span>
+          </div>
+
+          <div class="msg-row__content">
+            <div class="bubble">{{ msg.content }}</div>
+            <div class="msg-row__meta">
+              <span class="msg-row__time">{{ timeLabel(msg.sentAt) }}</span>
+              <span class="msg-row__status" *ngIf="isOwn(msg)">
+                {{ msg.status === 'READ' ? '✓✓' : '✓' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Zone de saisie -->
+      <div class="thread__input-area">
+        <textarea
+          class="thread__textarea"
+          placeholder="Écris un message…"
+          [(ngModel)]="draft"
+          (keydown)="onKeydown($event)"
+          [disabled]="sending"
+          rows="1"
+        ></textarea>
+        <button
+          class="thread__send-btn"
+          (click)="send()"
+          [disabled]="!draft.trim() || sending"
+          title="Envoyer (Entrée)"
+        >
+          <span class="spinner-sm" *ngIf="sending"></span>
+          <svg *ngIf="!sending" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
+
+    </ng-container>
+
+  </section>
+
+</div>
