@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { AuthService } from '@momentum/api-client';
 
 /**
  * Reçoit le token JWT après le flux OAuth2 social login.
@@ -40,12 +41,13 @@ import { CommonModule } from '@angular/common';
 export class CallbackComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   error = '';
 
   ngOnInit(): void {
-    const token   = this.route.snapshot.queryParamMap.get('token');
-    const userId  = this.route.snapshot.queryParamMap.get('userId');
+    const token    = this.route.snapshot.queryParamMap.get('token');
+    const userId   = this.route.snapshot.queryParamMap.get('userId');
     const errParam = this.route.snapshot.queryParamMap.get('error');
 
     if (errParam) {
@@ -55,8 +57,7 @@ export class CallbackComponent implements OnInit {
     }
 
     if (token && userId) {
-      localStorage.setItem('momentum_token', token);
-      localStorage.setItem('momentum_userId', userId);
+      this.auth.storeOAuthSession(token, userId);
       this.router.navigate(['/dashboard']);
     } else {
       this.error = 'Token manquant. Redirection...';

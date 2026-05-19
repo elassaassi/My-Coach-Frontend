@@ -1,0 +1,185 @@
+<!-- Loading -->
+<div *ngIf="loading" class="rate-wrap">
+  <div class="skeleton skeleton--hero"></div>
+  <div class="skeleton skeleton--line mt-4" style="width:60%"></div>
+  <div class="skeleton skeleton--line mt-3" style="width:40%"></div>
+</div>
+
+<!-- Success state -->
+<div *ngIf="allDone" class="rate-wrap rate-done">
+  <div class="done-card">
+    <span class="done-card__icon">🏆</span>
+    <h2 class="done-card__title">Évaluations envoyées !</h2>
+    <p class="done-card__sub">Merci d'avoir noté tes coéquipiers. Redirection en cours…</p>
+  </div>
+</div>
+
+<!-- Main -->
+<div *ngIf="!loading && !allDone && activity" class="rate-wrap">
+
+  <!-- Header -->
+  <div class="rate-header">
+    <button class="back-link" (click)="goBack()" type="button">← Retour</button>
+    <div class="rate-header__info">
+      <span class="rate-header__emoji">{{ sportMeta(activity.sport).emoji }}</span>
+      <div>
+        <h1 class="rate-header__title">Évaluer les joueurs</h1>
+        <p class="rate-header__sub">{{ activity.title }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- No one to rate -->
+  <div *ngIf="ratings.length === 0" class="empty-rate">
+    <span class="empty-rate__icon">🤷</span>
+    <p>Aucun joueur à évaluer pour cette session.</p>
+    <button class="btn btn--ghost" (click)="goBack()">Retour à la session</button>
+  </div>
+
+  <!-- Player cards -->
+  <div *ngIf="ratings.length > 0" class="player-cards">
+
+    <div *ngFor="let r of ratings"
+         class="player-card"
+         [class.player-card--submitted]="r.submitted"
+         [class.player-card--error]="r.error">
+
+      <!-- Card header -->
+      <div class="player-card__head">
+        <div class="player-card__avatar"
+             [style.background]="'hsl(' + avatarHue(r.userId) + ',65%,50%)'">
+          {{ avatarInitial(r) }}
+        </div>
+        <div class="player-card__identity">
+          <span class="player-card__name">{{ displayName(r) }}</span>
+          <span *ngIf="r.submitted" class="player-card__done-tag">✓ Évalué</span>
+          <span *ngIf="r.error" class="player-card__err-tag">⚠ Erreur</span>
+        </div>
+      </div>
+
+
+      <!-- Stars rows -->
+      <div class="stars-grid" [class.stars-grid--disabled]="r.submitted">
+
+        <div class="stars-row">
+          <span class="stars-row__label">Technicité</span>
+          <div class="stars-row__stars">
+            <button *ngFor="let s of stars(r.technicality)"
+                    class="star-btn"
+                    [class.star-btn--on]="s <= r.technicality"
+                    (click)="setStars(r, 'technicality', s)"
+                    [disabled]="r.submitted"
+                    type="button">★</button>
+          </div>
+          <span class="stars-row__val">{{ r.technicality }}/5</span>
+        </div>
+
+        <div class="stars-row">
+          <span class="stars-row__label">Attitude</span>
+          <div class="stars-row__stars">
+            <button *ngFor="let s of stars(r.behavior)"
+                    class="star-btn"
+                    [class.star-btn--on]="s <= r.behavior"
+                    (click)="setStars(r, 'behavior', s)"
+                    [disabled]="r.submitted"
+                    type="button">★</button>
+          </div>
+          <span class="stars-row__val">{{ r.behavior }}/5</span>
+        </div>
+
+        <div class="stars-row">
+          <span class="stars-row__label">Esprit d'équipe</span>
+          <div class="stars-row__stars">
+            <button *ngFor="let s of stars(r.teamwork)"
+                    class="star-btn"
+                    [class.star-btn--on]="s <= r.teamwork"
+                    (click)="setStars(r, 'teamwork', s)"
+                    [disabled]="r.submitted"
+                    type="button">★</button>
+          </div>
+          <span class="stars-row__val">{{ r.teamwork }}/5</span>
+        </div>
+      </div>
+
+      <!-- Level -->
+      <div class="level-row" [class.level-row--disabled]="r.submitted">
+        <span class="level-row__label">Niveau estimé</span>
+        <div class="level-btns">
+          <button *ngFor="let opt of levelOptions"
+                  class="level-btn"
+                  [class.level-btn--active]="r.level === opt.value"
+                  (click)="r.level = opt.value"
+                  [disabled]="r.submitted"
+                  type="button">
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Comment -->
+      <div class="comment-row" *ngIf="!r.submitted">
+        <textarea class="comment-input"
+                  [(ngModel)]="r.comment"
+                  placeholder="Commentaire (optionnel)…"
+                  rows="2"
+                  maxlength="300">
+        </textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer step 1 -->
+  <div *ngIf="ratings.length > 0 && step === 1" class="rate-footer">
+    <button class="btn btn--primary btn--lg" (click)="proceedToMoM()" type="button">
+      Continuer → Élire l'Homme du Match
+    </button>
+  </div>
+
+</div>
+
+<!-- ══ STEP 2 — Man of the Match election ══════════════════════════════════ -->
+<div *ngIf="!loading && !allDone && step === 2" class="rate-wrap">
+
+  <div class="rate-header">
+    <button class="back-link" (click)="step = 1" type="button">← Retour aux notes</button>
+    <div class="rate-header__info">
+      <span class="rate-header__emoji">🏆</span>
+      <div>
+        <h1 class="rate-header__title">Homme du Match</h1>
+        <p class="rate-header__sub">Qui a été le meilleur joueur de la session ?</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Candidate cards -->
+  <div class="mom-grid">
+    <button *ngFor="let r of ratings"
+            class="mom-card"
+            [class.mom-card--selected]="selectedMomUserId === r.userId"
+            (click)="selectMoM(r.userId)"
+            type="button">
+      <div class="mom-card__crown" *ngIf="selectedMomUserId === r.userId">👑</div>
+      <div class="mom-card__avatar"
+           [style.background]="'hsl(' + avatarHue(r.userId) + ',65%,50%)'">
+        {{ avatarInitial(r) }}
+      </div>
+      <span class="mom-card__name">{{ displayName(r) }}</span>
+      <div class="mom-card__check" [class.mom-card__check--on]="selectedMomUserId === r.userId">
+        {{ selectedMomUserId === r.userId ? '✓' : '' }}
+      </div>
+    </button>
+  </div>
+
+  <p class="mom-skip-hint">Optionnel — tu peux passer cette étape.</p>
+
+  <div class="rate-footer">
+    <span *ngIf="globalError" class="rate-footer__error">⚠ {{ globalError }}</span>
+    <button class="btn btn--primary btn--lg"
+            (click)="submitAll()"
+            [disabled]="submitting"
+            type="button">
+      {{ submitting ? 'Envoi en cours…' : 'Envoyer les évaluations' }}
+    </button>
+  </div>
+
+</div>

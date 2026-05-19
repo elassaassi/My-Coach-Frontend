@@ -21,4 +21,8 @@ export class RatingService {
       params: { sport }
     });
   }
+
+  hasRatedActivity(activityId: string): Observable<boolean> {
+    return this.http.get<boolean>(`${this.BASE}/ratings/activity/${activityId}/hasRated`);
+  }
 }

@@ -13,6 +13,7 @@ export interface Participant {
   joinedAt: string;
   firstName?: string | null;
   lastName?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface Activity {
@@ -52,6 +53,7 @@ export interface ActivityMessage {
   senderId: string;
   senderFirstName?: string | null;
   senderLastName?: string | null;
+  senderAvatarUrl?: string | null;
   content: string;
   sentAt: string;
 }

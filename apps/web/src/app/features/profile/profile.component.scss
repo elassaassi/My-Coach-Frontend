@@ -284,52 +284,182 @@ $bg:        #F8F9FA;
   z-index: 1;
 }
 
-// Right panel — ratings
-.ratings-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--clr-border-light); // gap color between cells
-}
-
-.rating-item {
+// Right panel — metrics
+.ratings-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4);
+  gap: var(--space-4);
+  padding: var(--space-5);
   background: $surface;
-  transition: background var(--transition-fast);
+}
 
-  &:hover { background: #fafbff; }
+// ── Tier block ────────────────────────────────────────────────────────────────
+// Tier progress = variable reward: user always sees the gap to close.
+.tier-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  &__hint {
+    font-size: var(--text-xs);
+    color: var(--clr-text-muted);
+    margin-left: auto;
+  }
+
+  &__max {
+    font-size: var(--text-xs);
+    color: $gold;
+    font-weight: var(--fw-semibold);
+    margin-left: auto;
+    animation: momGlow 2s ease-in-out infinite;
+  }
+}
+
+// Thin progress bar to next tier
+.tier-bar {
+  height: 5px;
+  background: var(--clr-border-light);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+
+  &__fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 1.2s cubic-bezier(.34,1.1,.64,1);
+
+    &[data-tier="BEGINNER"]     { background: #94a3b8; }
+    &[data-tier="INTERMEDIATE"] { background: #3b82f6; }
+    &[data-tier="ADVANCED"]     { background: #f59e0b; }
+    &[data-tier="ELITE"]        { background: linear-gradient(90deg, $gold, $orange); box-shadow: 0 0 8px rgba(245,196,0,.5); }
+  }
+}
+
+// ── Metric bars ───────────────────────────────────────────────────────────────
+// Progress bars beat stars: more precise, richer dopamine feedback.
+.metric-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.metric-bar {
+  &__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--space-1);
+  }
+
+  &__label {
+    font-size: var(--text-xs);
+    color: var(--clr-text-secondary);
+    font-weight: var(--fw-semibold);
+  }
+
+  &__val {
+    font-size: var(--text-sm);
+    font-weight: var(--fw-bold);
+    color: var(--clr-text-primary);
+  }
+
+  &__max {
+    font-size: 10px;
+    color: var(--clr-text-muted);
+    font-weight: var(--fw-normal);
+  }
+
+  &__track {
+    height: 7px;
+    background: var(--clr-border-light);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+
+  &__fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 1.2s cubic-bezier(.34,1.1,.64,1);
+
+    &[data-tier="BEGINNER"]     { background: #94a3b8; }
+    &[data-tier="INTERMEDIATE"] { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+    &[data-tier="ADVANCED"]     { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    &[data-tier="ELITE"]        { background: linear-gradient(90deg, $gold, $orange); box-shadow: 0 0 6px rgba(245,196,0,.4); }
+  }
+}
+
+// ── KPIs row ──────────────────────────────────────────────────────────────────
+.stats-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--clr-border-light);
+}
+
+.stats-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-3);
+  background: var(--clr-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--clr-border-light);
+
+  &__icon { font-size: 1.2rem; line-height: 1; }
+
+  &__val {
+    font-size: var(--text-xl);
+    font-weight: var(--fw-bold);
+    color: var(--clr-text-primary);
+    line-height: 1.1;
+  }
 
   &__label {
     font-size: 10px;
     color: var(--clr-text-muted);
     text-transform: uppercase;
-    letter-spacing: .06em;
+    letter-spacing: .04em;
     font-weight: var(--fw-semibold);
   }
 
-  &__stars { display: flex; gap: 2px; }
-
-  &__val {
-    font-size: var(--text-base);
-    font-weight: var(--fw-bold);
-    color: var(--clr-text-primary);
-  }
-
-  &__mom {
-    font-size: var(--text-xl);
-    font-weight: var(--fw-bold);
-    color: $gold;
-    text-shadow: 0 0 12px rgba(245,196,0,.4);
-    animation: momGlow 2s ease-in-out infinite;
-  }
-
-  &--highlight {
+  &--mom {
     background: linear-gradient(135deg, #fffbeb, #fef9e7);
-    border-bottom: 2px solid rgba(245,196,0,.3);
+    border-color: rgba(245,196,0,.3);
+
+    .stats-kpi__val { color: #92400e; }
   }
+
+  &--ratings {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border-color: rgba(59,130,246,.25);
+
+    .stats-kpi__val { color: #1d4ed8; }
+  }
+
+  &--glow {
+    .stats-kpi__val {
+      color: $gold-dark;
+      text-shadow: 0 0 10px rgba(245,196,0,.4);
+      animation: momGlow 2.4s ease-in-out infinite;
+    }
+  }
+}
+
+// Also fix ring stroke to use data-tier
+.proscore-ring__fill {
+  &[data-tier="BEGINNER"]     { stroke: #94a3b8; }
+  &[data-tier="INTERMEDIATE"] { stroke: #3b82f6; }
+  &[data-tier="ADVANCED"]     { stroke: #f59e0b; }
+  &[data-tier="ELITE"]        { stroke: $gold;   filter: drop-shadow(0 0 6px rgba(245,196,0,.7)); }
 }
 
 @keyframes momGlow {
@@ -598,8 +728,58 @@ $bg:        #F8F9FA;
   }
 
   &--past {
-    opacity: .8;
+    opacity: .85;
     &:hover { opacity: 1; }
+  }
+}
+
+// ── Past activity status badges ────────────────────────────────────────────────
+// Each status has a distinct colour + shape for instant pattern recognition.
+.past-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &__icon { font-size: 10px; line-height: 1; }
+
+  // ✓ Joué — vert = réussite, validation, dopamine positive
+  &[data-key="played"] {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+
+  // 👑 Organisé — bleu profond = autorité, leadership
+  &[data-key="organized"] {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+  }
+
+  // ○ Forfait — ambre neutre = absence sans jugement fort
+  &[data-key="forfeit"] {
+    background: #fefce8;
+    color: #92400e;
+    border: 1px solid #fde68a;
+  }
+
+  // ✕ Annulé — rose désaturé = événement externe, hors contrôle
+  &[data-key="cancelled"] {
+    background: #fdf2f8;
+    color: #9d174d;
+    border: 1px solid #fbcfe8;
+  }
+
+  &[data-key="neutral"] {
+    background: var(--clr-bg);
+    color: var(--clr-text-muted);
+    border: 1px solid var(--clr-border-light);
   }
 }
 

@@ -10,6 +10,10 @@ export const ACTIVITY_ROUTES: Routes = [
     loadComponent: () => import('./activity-create/activity-create.component').then(m => m.ActivityCreateComponent)
   },
   {
+    path: ':id/rate',
+    loadComponent: () => import('./rate-players/rate-players.component').then(m => m.RatePlayersComponent)
+  },
+  {
     path: ':id',
     loadComponent: () => import('./activity-detail/activity-detail.component').then(m => m.ActivityDetailComponent)
   }

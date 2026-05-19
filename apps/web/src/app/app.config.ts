@@ -3,13 +3,13 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { routes } from './app.routes';
-import { authInterceptor, apiUnwrapInterceptor } from '@momentum/api-client';
+import { authInterceptor, apiUnwrapInterceptor, errorInterceptor } from '@momentum/api-client';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([apiUnwrapInterceptor, authInterceptor])),
+    provideHttpClient(withInterceptors([errorInterceptor, apiUnwrapInterceptor, authInterceptor])),
     provideAnimationsAsync(),
   ]
 };

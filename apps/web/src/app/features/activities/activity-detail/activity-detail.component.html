@@ -181,8 +181,20 @@
       {{ completing ? 'Finalisation...' : '🏁 Terminer le match' }}
     </button>
 
+    <!-- Evaluate players button (COMPLETED session) -->
+    <ng-container *ngIf="isMatchCompleted && (isOrganizer || isParticipant)">
+      <a *ngIf="!alreadyRated"
+         [routerLink]="['/activities', activity.id, 'rate']"
+         class="btn btn--rate btn--lg">
+        ⭐ Évaluer les joueurs
+      </a>
+      <div *ngIf="alreadyRated" class="already-rated-badge">
+        ✅ Tu as déjà évalué les joueurs de cette session
+      </div>
+    </ng-container>
+
     <!-- Participant: leave -->
-    <div *ngIf="!isOrganizer && isParticipant" class="joined-state">
+    <div *ngIf="!isOrganizer && isParticipant && !isMatchCompleted" class="joined-state">
       <div class="joined-state__check">✓ Tu participes</div>
       <button class="btn btn--ghost btn--sm" (click)="leave()" [disabled]="joining">
         {{ joining ? '...' : 'Quitter la session' }}
@@ -222,8 +234,9 @@
            (click)="openPlayerProfile(p.userId)"
            [title]="'Voir le profil'">
         <div class="participant-chip__avatar"
-             [style.background]="'hsl(' + avatarHue(p.userId) + ',65%,50%)'">
-          {{ participantInitial(p) }}
+             [style.background]="p.avatarUrl ? 'transparent' : 'hsl(' + avatarHue(p.userId) + ',65%,50%)'">
+          <img *ngIf="p.avatarUrl" [src]="p.avatarUrl" [alt]="participantInitial(p)" class="avatar-img--chip" />
+          <span *ngIf="!p.avatarUrl">{{ participantInitial(p) }}</span>
         </div>
         <div class="participant-chip__info">
           <span class="participant-chip__name">
@@ -267,13 +280,13 @@
     </div>
 
     <!-- Match terminé (COMPLETED) -->
-    <div *ngIf="isMatchCompleted" class="chat-system-banner">
+    <div *ngIf="isMatchCompleted && (isOrganizer || isParticipant) && !alreadyRated" class="chat-system-banner">
       <span class="chat-system-banner__icon">🏁</span>
       <div class="chat-system-banner__body">
         <strong>Match terminé !</strong>
         <span>La feuille de match est complète — évalue tes coéquipiers pour enrichir leur ProScore.</span>
       </div>
-      <a routerLink="/ratings" class="chat-system-banner__cta">Évaluer →</a>
+      <a [routerLink]="['/activities', activity!.id, 'rate']" class="chat-system-banner__cta">Évaluer →</a>
     </div>
 
     <!-- Not member notice -->
@@ -292,8 +305,9 @@
            [class.chat-msg--own]="isOwnMessage(msg)">
         <div *ngIf="!isOwnMessage(msg)"
              class="chat-msg__avatar"
-             [style.background]="'hsl(' + avatarHue(msg.senderId) + ',65%,45%)'">
-          {{ messageSenderInitial(msg) }}
+             [style.background]="msg.senderAvatarUrl ? 'transparent' : 'hsl(' + avatarHue(msg.senderId) + ',65%,45%)'">
+          <img *ngIf="msg.senderAvatarUrl" [src]="msg.senderAvatarUrl" [alt]="messageSenderInitial(msg)" class="avatar-img--chip" />
+          <span *ngIf="!msg.senderAvatarUrl">{{ messageSenderInitial(msg) }}</span>
         </div>
         <div class="chat-msg__bubble">
           <span *ngIf="!isOwnMessage(msg)" class="chat-msg__sender">{{ messageSenderName(msg) }}</span>
@@ -352,8 +366,9 @@
       <!-- Identity -->
       <div class="player-hero">
         <div class="player-avatar"
-             [style.background]="'hsl(' + avatarHue(playerPanelUser.id) + ',60%,42%)'">
-          {{ playerPanelUser.firstName[0] }}{{ playerPanelUser.lastName[0] }}
+             [style.background]="playerPanelUser.avatarUrl ? 'transparent' : 'hsl(' + avatarHue(playerPanelUser.id) + ',60%,42%)'">
+          <img *ngIf="playerPanelUser.avatarUrl" [src]="playerPanelUser.avatarUrl" alt="" class="avatar-img--panel" />
+          <span *ngIf="!playerPanelUser.avatarUrl">{{ playerPanelUser.firstName[0] }}{{ playerPanelUser.lastName[0] }}</span>
         </div>
         <div class="player-hero__info">
           <h3 class="player-hero__name">{{ playerPanelUser.firstName }} {{ playerPanelUser.lastName }}</h3>

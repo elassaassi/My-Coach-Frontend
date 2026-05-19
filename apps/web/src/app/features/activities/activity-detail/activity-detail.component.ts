@@ -55,6 +55,7 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
   error    = false;
   joining   = false;
   completing = false;
+  alreadyRated = false;
 
   // Countdown
   countdown = '';
@@ -151,6 +152,12 @@ export class ActivityDetailComponent implements OnInit, OnDestroy {
         this.startCountdown();
         this.loadChat();
         this.startChatPolling();
+        if (a.status === 'COMPLETED' && this.currentUserId) {
+          this.ratingService.hasRatedActivity(a.id).subscribe({
+            next: (rated) => { this.alreadyRated = rated; },
+            error: () => {},
+          });
+        }
       },
       error: () => { this.error = true; this.loading = false; },
     });

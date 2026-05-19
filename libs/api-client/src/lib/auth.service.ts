@@ -45,6 +45,10 @@ export class AuthService {
     );
   }
 
+  storeOAuthSession(token: string, userId: string): void {
+    this.storeSession({ accessToken: token, userId } as AuthResponse);
+  }
+
   logout(): void {
     localStorage.removeItem('momentum_token');
     localStorage.removeItem('momentum_userId');

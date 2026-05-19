@@ -41,6 +41,23 @@ const PROFICIENCY_COLOR: Record<Proficiency, string> = {
   ELITE:        'error',
 };
 
+// PlayerLevel (AMATEUR/SEMI_PRO/PRO/GOAT) → Proficiency display labels
+const PLAYER_LEVEL_TO_PROFICIENCY: Record<string, Proficiency> = {
+  AMATEUR:  'BEGINNER',
+  SEMI_PRO: 'INTERMEDIATE',
+  PRO:      'ADVANCED',
+  GOAT:     'ELITE',
+};
+
+// Tier: thresholds, next-level label, progress bounds
+interface TierConfig { min: number; max: number; nextLabel: string; }
+const TIER_CONFIG: Record<Proficiency, TierConfig> = {
+  BEGINNER:     { min: 0,  max: 40, nextLabel: 'Intermédiaire' },
+  INTERMEDIATE: { min: 40, max: 60, nextLabel: 'Avancé'        },
+  ADVANCED:     { min: 60, max: 80, nextLabel: 'Élite'         },
+  ELITE:        { min: 80, max: 100, nextLabel: ''             },
+};
+
 const ALL_SPORTS = Object.entries(SPORT_META).map(([id, m]) => ({ id, ...m }));
 const ALL_LEVELS: Proficiency[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ELITE'];
 const CITIES = [
@@ -148,8 +165,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     const now = new Date();
     return this.activities
       .filter(a =>
-        a.status === 'COMPLETED' ||
-        (a.status === 'ONGOING' && new Date(a.scheduledAt) <= now)
+        (a.status === 'COMPLETED' && a.currentParticipantsCount >= a.maxParticipants) ||
+        (a.status === 'ONGOING'   && new Date(a.scheduledAt) <= now)
       )
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
   }
@@ -170,8 +187,51 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   sportMeta(sport: string) { return SPORT_META[sport] ?? { emoji: '🏅', label: sport }; }
+
+  pastActivityStatus(a: Activity): { label: string; icon: string; key: string } {
+    if (a.status === 'CANCELLED') {
+      return { label: 'Annulé', icon: '✕', key: 'cancelled' };
+    }
+    if (a.status === 'COMPLETED') {
+      const uid         = this.authService.currentUserId;
+      const isOrganizer = a.organizerId === uid;
+      const isPlayer    = a.participants.some(p => p.userId === uid);
+      if (isPlayer)    return { label: 'Joué',     icon: '✓', key: 'played'    };
+      if (isOrganizer) return { label: 'Organisé', icon: '👑', key: 'organized' };
+      return              { label: 'Forfait',   icon: '○', key: 'forfeit'   };
+    }
+    return { label: a.status, icon: '', key: 'neutral' };
+  }
   proficiencyLabel(p: string) { return PROFICIENCY_LABELS[p as Proficiency] ?? p; }
   proficiencyColor(p: string): any { return PROFICIENCY_COLOR[p as Proficiency] ?? 'neutral'; }
+
+  // Map PlayerLevel → Proficiency for display
+  get tierProficiency(): Proficiency {
+    return PLAYER_LEVEL_TO_PROFICIENCY[this.stats?.level ?? 'AMATEUR'] ?? 'BEGINNER';
+  }
+
+  get tierLabel(): string  { return this.proficiencyLabel(this.tierProficiency); }
+  get tierColor(): string  { return this.proficiencyColor(this.tierProficiency); }
+
+  // Progress % within current tier band
+  get tierProgress(): number {
+    const score = this.stats?.proScore ?? 0;
+    const cfg   = TIER_CONFIG[this.tierProficiency];
+    if (!cfg || this.tierProficiency === 'ELITE') return 100;
+    return Math.round(((score - cfg.min) / (cfg.max - cfg.min)) * 100);
+  }
+
+  // "X pts pour Avancé" or null when max
+  get nextLevelHint(): string | null {
+    const score = this.stats?.proScore ?? 0;
+    const cfg   = TIER_CONFIG[this.tierProficiency];
+    if (!cfg || !cfg.nextLabel) return null;
+    const gap = cfg.max - score;
+    return gap <= 0 ? null : `+${gap} pts pour ${cfg.nextLabel}`;
+  }
+
+  // % fill for each metric bar (value 1-5 → 0-100%)
+  metricPct(val: number): number { return Math.round((val / 5) * 100); }
 
   stars(val: number): boolean[] {
     return Array.from({ length: 5 }, (_, i) => i < Math.round(val));

@@ -41,13 +41,14 @@
 
   <!-- ── PROSCORE RING + STATS ─────────────────────────────────────────── -->
   <div class="stats-section" *ngIf="stats; else noStats">
-    <!-- ProScore SVG ring -->
+
+    <!-- Left — ProScore ring -->
     <div class="proscore-card">
       <svg class="proscore-ring" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="44" class="proscore-ring__track"/>
         <circle cx="50" cy="50" r="44" class="proscore-ring__fill"
                 [style.stroke-dashoffset]="proScoreCircle"
-                [style.stroke]="stats.proScore >= 80 ? '#F5C400' : stats.proScore >= 60 ? '#22c55e' : 'var(--clr-primary)'"/>
+                [attr.data-tier]="tierProficiency"/>
       </svg>
       <div class="proscore-center">
         <span class="proscore-center__value">{{ stats.proScore }}</span>
@@ -56,41 +57,71 @@
       <p class="proscore-tag">{{ proScoreLabel }}</p>
     </div>
 
-    <!-- Stats grid -->
-    <div class="ratings-grid">
-      <div class="rating-item">
-        <span class="rating-item__label">Technicité</span>
-        <div class="rating-item__stars">
-          <span *ngFor="let filled of stars(stats.avgTechnicality)" [class]="filled ? 'star star--on' : 'star'">★</span>
+    <!-- Right — metrics + tier -->
+    <div class="ratings-panel">
+
+      <!-- Tier block -->
+      <div class="tier-block">
+        <div class="tier-block__row">
+          <mn-badge [color]="tierColor">{{ tierLabel }}</mn-badge>
+          <span *ngIf="nextLevelHint" class="tier-block__hint">{{ nextLevelHint }}</span>
+          <span *ngIf="!nextLevelHint" class="tier-block__max">Niveau max 👑</span>
         </div>
-        <span class="rating-item__val">{{ stats.avgTechnicality | number:'1.1-1' }}/5</span>
-      </div>
-      <div class="rating-item">
-        <span class="rating-item__label">Attitude</span>
-        <div class="rating-item__stars">
-          <span *ngFor="let filled of stars(stats.avgBehavior)" [class]="filled ? 'star star--on' : 'star'">★</span>
+        <!-- Progress bar to next tier — variable reward trigger -->
+        <div class="tier-bar">
+          <div class="tier-bar__fill"
+               [attr.data-tier]="tierProficiency"
+               [style.width.%]="tierProgress"></div>
         </div>
-        <span class="rating-item__val">{{ stats.avgBehavior | number:'1.1-1' }}/5</span>
       </div>
-      <div class="rating-item">
-        <span class="rating-item__label">Esprit d'équipe</span>
-        <div class="rating-item__stars">
-          <span *ngFor="let filled of stars(stats.avgTeamwork)" [class]="filled ? 'star star--on' : 'star'">★</span>
+
+      <!-- Metric bars -->
+      <div class="metric-bars">
+        <div class="metric-bar">
+          <div class="metric-bar__head">
+            <span class="metric-bar__label">⚡ Technicité</span>
+            <span class="metric-bar__val">{{ stats.avgTechnicality | number:'1.1-1' }}<span class="metric-bar__max">/5</span></span>
+          </div>
+          <div class="metric-bar__track">
+            <div class="metric-bar__fill" [attr.data-tier]="tierProficiency" [style.width.%]="metricPct(stats.avgTechnicality)"></div>
+          </div>
         </div>
-        <span class="rating-item__val">{{ stats.avgTeamwork | number:'1.1-1' }}/5</span>
+
+        <div class="metric-bar">
+          <div class="metric-bar__head">
+            <span class="metric-bar__label">🧠 Attitude</span>
+            <span class="metric-bar__val">{{ stats.avgBehavior | number:'1.1-1' }}<span class="metric-bar__max">/5</span></span>
+          </div>
+          <div class="metric-bar__track">
+            <div class="metric-bar__fill" [attr.data-tier]="tierProficiency" [style.width.%]="metricPct(stats.avgBehavior)"></div>
+          </div>
+        </div>
+
+        <div class="metric-bar">
+          <div class="metric-bar__head">
+            <span class="metric-bar__label">🤝 Esprit d'équipe</span>
+            <span class="metric-bar__val">{{ stats.avgTeamwork | number:'1.1-1' }}<span class="metric-bar__max">/5</span></span>
+          </div>
+          <div class="metric-bar__track">
+            <div class="metric-bar__fill" [attr.data-tier]="tierProficiency" [style.width.%]="metricPct(stats.avgTeamwork)"></div>
+          </div>
+        </div>
       </div>
-      <div class="rating-item rating-item--highlight">
-        <span class="rating-item__label">Man of the Match</span>
-        <span class="rating-item__mom">🏆 × {{ stats.manOfMatchCount }}</span>
+
+      <!-- KPIs row -->
+      <div class="stats-kpis">
+        <div class="stats-kpi stats-kpi--mom" [class.stats-kpi--glow]="stats.manOfMatchCount > 0">
+          <span class="stats-kpi__icon">🏆</span>
+          <span class="stats-kpi__val">{{ stats.manOfMatchCount }}</span>
+          <span class="stats-kpi__label">Man of Match</span>
+        </div>
+        <div class="stats-kpi stats-kpi--ratings">
+          <span class="stats-kpi__icon">📊</span>
+          <span class="stats-kpi__val">{{ stats.totalRatings }}</span>
+          <span class="stats-kpi__label">Évaluations</span>
+        </div>
       </div>
-      <div class="rating-item">
-        <span class="rating-item__label">Évaluations reçues</span>
-        <span class="rating-item__val">{{ stats.totalRatings }}</span>
-      </div>
-      <div class="rating-item">
-        <span class="rating-item__label">Niveau estimé</span>
-        <mn-badge [color]="proficiencyColor(stats.level)">{{ proficiencyLabel(stats.level) }}</mn-badge>
-      </div>
+
     </div>
   </div>
 
@@ -184,9 +215,12 @@
           <span class="mini-card__title">{{ a.title }}</span>
           <span class="mini-card__date">{{ a.scheduledAt | date:'EEE dd MMM · HH:mm' }}</span>
         </div>
-        <span class="mini-card__status" [attr.data-status]="a.status">
-          {{ a.status === 'COMPLETED' ? 'Terminé' : a.status === 'CANCELLED' ? 'Annulé' : a.status }}
-        </span>
+        <ng-container *ngIf="pastActivityStatus(a) as s">
+          <span class="past-status" [attr.data-key]="s.key">
+            <span class="past-status__icon">{{ s.icon }}</span>
+            {{ s.label }}
+          </span>
+        </ng-container>
       </a>
     </div>
     <ng-template #noPast>
