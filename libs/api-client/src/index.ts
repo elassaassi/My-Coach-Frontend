@@ -5,3 +5,4 @@ export * from './lib/rating.service';
 export * from './lib/highlight.service';
 export * from './lib/api.interceptor';
 export * from './lib/messaging.service';
+export * from './lib/matching.service';

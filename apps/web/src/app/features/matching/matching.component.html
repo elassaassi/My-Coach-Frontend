@@ -1,0 +1,211 @@
+<div class="matching">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab" [class.tab--active]="activeTab === 'search'" (click)="switchTab('search')">
+      Recherche
+    </button>
+    <button class="tab" [class.tab--active]="activeTab === 'history'" (click)="switchTab('history')">
+      Historique
+    </button>
+  </div>
+
+  <!-- ── SEARCH TAB ──────────────────────────────────────────────────────── -->
+  <div class="tab-content" *ngIf="activeTab === 'search'">
+
+    <!-- Form (hidden while searching/result) -->
+    <ng-container *ngIf="searchState === 'idle' || searchState === 'error'">
+
+      <!-- Sport selection -->
+      <section class="section">
+        <h3 class="section__title">Sport</h3>
+        <div class="chip-grid">
+          <button
+            *ngFor="let s of sports"
+            class="chip"
+            [class.chip--active]="selectedSport === s.value"
+            (click)="selectSport(s.value)"
+          >
+            <span class="chip__emoji">{{ s.emoji }}</span>
+            {{ s.label }}
+          </button>
+        </div>
+      </section>
+
+      <!-- Level selection -->
+      <section class="section">
+        <h3 class="section__title">Niveau</h3>
+        <div class="level-row">
+          <button
+            *ngFor="let l of levels"
+            class="level-btn"
+            [class.level-btn--active]="selectedLevel === l.value"
+            [style.--accent]="l.color"
+            (click)="selectLevel(l.value)"
+          >
+            {{ l.label }}
+          </button>
+        </div>
+      </section>
+
+      <!-- Distance -->
+      <section class="section">
+        <h3 class="section__title">Distance max &mdash; <strong>{{ selectedDistance }} km</strong></h3>
+        <div class="distance-pills">
+          <button
+            *ngFor="let d of distances"
+            class="pill"
+            [class.pill--active]="selectedDistance === d"
+            (click)="selectedDistance = d"
+          >{{ d }} km</button>
+        </div>
+      </section>
+
+      <!-- Location -->
+      <section class="section section--geo">
+        <div class="geo-info">
+          <span class="geo-icon">📍</span>
+          <span *ngIf="geoLoading" class="geo-label">Localisation en cours…</span>
+          <span *ngIf="!geoLoading" class="geo-label">
+            {{ latitude | number:'1.2-2' }}°, {{ longitude | number:'1.2-2' }}°
+          </span>
+          <button class="geo-refresh" (click)="detectLocation()" [disabled]="geoLoading" title="Actualiser">
+            ↺
+          </button>
+        </div>
+      </section>
+
+      <!-- Error banner -->
+      <p class="error-banner" *ngIf="searchState === 'error'">{{ errorMessage }}</p>
+
+      <!-- CTA -->
+      <button class="btn-search" [disabled]="!canSearch" (click)="search()">
+        Trouver un partenaire
+      </button>
+
+    </ng-container>
+
+    <!-- ── SEARCHING / POLLING ── -->
+    <div class="result-panel" *ngIf="searchState === 'searching' || searchState === 'polling'">
+      <div class="pulse-ring"></div>
+      <p class="result-panel__title">Recherche en cours…</p>
+      <p class="result-panel__sub">
+        On cherche un partenaire
+        <strong>{{ sportLabel(selectedSport) }}</strong>
+        &middot; <strong>{{ levelLabel(selectedLevel) }}</strong>
+        dans un rayon de <strong>{{ selectedDistance }} km</strong>
+      </p>
+      <button class="btn-cancel" (click)="reset()">Annuler</button>
+    </div>
+
+    <!-- ── FOUND ── -->
+    <div class="result-panel result-panel--found" *ngIf="searchState === 'found'">
+      <div class="found-badge">🎯 Partenaire trouvé !</div>
+
+      <div class="match-card" *ngIf="currentRequest">
+        <!-- User avatar -->
+        <div class="match-avatar">
+          <img *ngIf="matchedUser?.avatarUrl" [src]="matchedUser!.avatarUrl" [alt]="matchedUser!.firstName" />
+          <div *ngIf="!matchedUser?.avatarUrl" class="match-avatar__initials">
+            {{ userInitials(matchedUser ?? undefined) }}
+          </div>
+        </div>
+
+        <!-- User info -->
+        <div class="match-info" *ngIf="matchedUser; else loadingUser">
+          <h3 class="match-info__name">{{ matchedUser.firstName }} {{ matchedUser.lastName }}</h3>
+          <p class="match-info__sport">
+            {{ sportEmoji(currentRequest.sport) }} {{ sportLabel(currentRequest.sport) }}
+            &middot; {{ levelLabel(currentRequest.proficiency) }}
+          </p>
+          <p class="match-info__location" *ngIf="matchedUser.sportProfile?.city">
+            📍 {{ matchedUser.sportProfile.city }}
+          </p>
+        </div>
+        <ng-template #loadingUser>
+          <div class="match-info">
+            <div class="skeleton skeleton--name"></div>
+            <div class="skeleton skeleton--sport"></div>
+          </div>
+        </ng-template>
+
+        <!-- Score bar -->
+        <div class="score-section">
+          <span class="score-label">Compatibilité</span>
+          <div class="score-bar">
+            <div
+              class="score-bar__fill"
+              [style.width]="scoreWidth(currentRequest.matchScore)"
+              [style.background]="scoreColor(currentRequest.matchScore)"
+            ></div>
+          </div>
+          <span class="score-pct">{{ (currentRequest.matchScore * 100) | number:'1.0-0' }}%</span>
+        </div>
+      </div>
+
+      <button class="btn-search" (click)="reset()">Nouvelle recherche</button>
+    </div>
+
+    <!-- ── NO_MATCH ── -->
+    <div class="result-panel result-panel--empty" *ngIf="searchState === 'no_match'">
+      <div class="empty-icon">🔍</div>
+      <p class="result-panel__title">Aucun partenaire trouvé</p>
+      <p class="result-panel__sub">
+        Essaie d'élargir la distance ou de choisir un niveau différent.
+      </p>
+      <button class="btn-search" (click)="reset()">Modifier la recherche</button>
+    </div>
+
+  </div>
+
+  <!-- ── HISTORY TAB ─────────────────────────────────────────────────────── -->
+  <div class="tab-content" *ngIf="activeTab === 'history'">
+
+    <div class="loading-spinner" *ngIf="historyLoading">
+      <div class="spinner"></div>
+    </div>
+
+    <div class="history-empty" *ngIf="!historyLoading && history.length === 0">
+      <p>Aucune recherche pour l'instant.</p>
+    </div>
+
+    <ul class="history-list" *ngIf="!historyLoading && history.length > 0">
+      <li class="history-item" *ngFor="let m of history">
+        <div class="history-item__left">
+          <span class="history-item__emoji">{{ sportEmoji(m.sport) }}</span>
+          <div class="history-item__info">
+            <span class="history-item__sport">{{ sportLabel(m.sport) }}</span>
+            <span class="history-item__meta">
+              {{ levelLabel(m.proficiency) }} &middot; {{ m.maxDistanceKm }} km
+            </span>
+          </div>
+        </div>
+        <div class="history-item__right">
+          <span class="badge" [ngClass]="statusClass(m.status)">{{ statusLabel(m.status) }}</span>
+          <span class="history-item__date">{{ relativeDate(m.createdAt) }}</span>
+        </div>
+        <!-- Matched user preview -->
+        <div class="history-item__match" *ngIf="m.status === 'FOUND' && historyUsers.get(m.matchedUserId!)">
+          <div class="match-mini-avatar">
+            <img
+              *ngIf="historyUsers.get(m.matchedUserId!)?.avatarUrl"
+              [src]="historyUsers.get(m.matchedUserId!)!.avatarUrl"
+              [alt]="historyUsers.get(m.matchedUserId!)!.firstName"
+            />
+            <span *ngIf="!historyUsers.get(m.matchedUserId!)?.avatarUrl">
+              {{ userInitials(historyUsers.get(m.matchedUserId!)) }}
+            </span>
+          </div>
+          <span class="match-mini-name">
+            {{ historyUsers.get(m.matchedUserId!)!.firstName }}
+            {{ historyUsers.get(m.matchedUserId!)!.lastName }}
+          </span>
+          <span class="match-mini-score">
+            {{ (m.matchScore * 100) | number:'1.0-0' }}%
+          </span>
+        </div>
+      </li>
+    </ul>
+
+  </div>
+</div>

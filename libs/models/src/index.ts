@@ -5,3 +5,4 @@ export * from './lib/coaching.model';
 export * from './lib/highlight.model';
 export * from './lib/scouting.model';
 export * from './lib/messaging.model';
+export * from './lib/matching.model';
